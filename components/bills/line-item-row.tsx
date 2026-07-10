@@ -82,7 +82,13 @@ export function LineItemRow({
                   onValueChange={(v) => field.onChange(v === NONE ? null : v)}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="เลือกรหัสบัญชี" />
+                    <SelectValue placeholder="เลือกรหัสบัญชี">
+                      {(value: string) => {
+                        if (value === NONE) return "ไม่ระบุ";
+                        const account = accounts.find((a) => a.id === value);
+                        return account ? `${account.code} — ${account.name}` : undefined;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
@@ -110,7 +116,15 @@ export function LineItemRow({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="เลือกรถ/เครน (คันเดียว)" />
+                    <SelectValue placeholder="เลือกรถ/เครน (คันเดียว)">
+                      {(value: string) => {
+                        if (value === NONE) return "ไม่ระบุ";
+                        const vehicle = vehicles.find((v) => v.id === value);
+                        return vehicle
+                          ? `${vehicle.code}${vehicle.nickname ? ` (${vehicle.nickname})` : ""}`
+                          : undefined;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
@@ -222,7 +236,14 @@ export function LineItemRow({
                       }}
                     >
                       <SelectTrigger className="w-full bg-background">
-                        <SelectValue placeholder="เลือกหมวด" />
+                        <SelectValue placeholder="เลือกหมวด">
+                          {(value: string) => {
+                            if (value === NONE) return "ไม่ระบุ";
+                            const category = whtCategories.find((c) => c.id === value);
+                            if (!category) return undefined;
+                            return `${category.name}${category.default_rate_pct != null ? ` (${category.default_rate_pct}%)` : ""}`;
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>ไม่ระบุ</SelectItem>

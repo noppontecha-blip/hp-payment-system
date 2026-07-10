@@ -94,7 +94,9 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         </div>
         <Select value={workType} onValueChange={(v) => setWorkType(v ?? ALL)}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="ประเภทงาน" />
+            <SelectValue placeholder="ประเภทงาน">
+              {(value: string) => (value === ALL ? "ทุกประเภทงาน" : value)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>ทุกประเภทงาน</SelectItem>
@@ -104,7 +106,11 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         </Select>
         <Select value={vendorId} onValueChange={(v) => setVendorId(v ?? ALL)}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="ผู้จำหน่าย" />
+            <SelectValue placeholder="ผู้จำหน่าย">
+              {(value: string) =>
+                value === ALL ? "ทุกผู้จำหน่าย" : (vendors.find((v) => v.id === value)?.name ?? undefined)
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>ทุกผู้จำหน่าย</SelectItem>
@@ -117,7 +123,9 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         </Select>
         <Select value={docStatus} onValueChange={(v) => setDocStatus(v ?? ALL)}>
           <SelectTrigger className="w-52">
-            <SelectValue placeholder="สถานะเอกสาร" />
+            <SelectValue placeholder="สถานะเอกสาร">
+              {(value: string) => (value === ALL ? "ทุกสถานะเอกสาร" : value)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>ทุกสถานะเอกสาร</SelectItem>
@@ -127,7 +135,11 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         </Select>
         <Select value={whtFilter} onValueChange={(v) => setWhtFilter(v ?? ALL)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="หัก ณ ที่จ่าย" />
+            <SelectValue placeholder="หัก ณ ที่จ่าย">
+              {(value: string) =>
+                value === ALL ? "ทั้งหมด" : value === "yes" ? "ต้องหัก" : "ไม่ต้องหัก"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>ทั้งหมด</SelectItem>
@@ -140,7 +152,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
             <Download className="size-4" />
             ส่งออก Excel
           </Button>
-          <Button render={<Link href="/bills/new" />}>
+          <Button render={<Link href="/bills/new" />} nativeButton={false}>
             <Plus className="size-4" />
             สร้างบิลใหม่
           </Button>

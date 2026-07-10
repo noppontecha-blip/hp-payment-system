@@ -37,13 +37,20 @@ export function VendorCombobox({
     <div className="space-y-1">
       <Combobox
         items={items}
+        itemToStringLabel={(value) => vendors.find((v) => v.id === value)?.name ?? ""}
         value={vendorId ?? null}
         onValueChange={(value) => {
           const match = vendors.find((v) => v.id === value);
           onChange({ vendor_id: value, vendor_name_snapshot: match?.name ?? vendorName });
         }}
         inputValue={vendorName}
-        onInputValueChange={(text) => {
+        onInputValueChange={(text, eventDetails) => {
+          // Selecting an item (or closing/blurring the popup) also fires this callback with the
+          // item's label — skip those so we don't immediately null out the vendor_id we just set
+          // in onValueChange. Only genuine keystrokes (reason "none") count as free text.
+          if (eventDetails.reason !== "none") {
+            return;
+          }
           onChange({ vendor_id: null, vendor_name_snapshot: text });
         }}
       >
