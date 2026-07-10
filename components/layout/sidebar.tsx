@@ -12,8 +12,10 @@ import {
   BookOpenText,
   Percent,
   HardHat,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/actions/auth";
 
 const mainMenu = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -65,7 +67,7 @@ function NavGroup({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ userEmail }: { userEmail?: string | null }) {
   const pathname = usePathname();
 
   return (
@@ -83,6 +85,16 @@ export function Sidebar() {
         <NavGroup title="เมนูหลัก" items={mainMenu} pathname={pathname} />
         <NavGroup title="ข้อมูล MASTER" items={masterMenu} pathname={pathname} />
       </nav>
+      <form action={signOut} className="border-t border-white/10 p-3">
+        {userEmail && <p className="truncate px-3 pb-2 text-xs text-white/40">{userEmail}</p>}
+        <button
+          type="submit"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <LogOut className="size-4 shrink-0" />
+          ออกจากระบบ
+        </button>
+      </form>
     </aside>
   );
 }
