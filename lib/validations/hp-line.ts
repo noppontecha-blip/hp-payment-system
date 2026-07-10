@@ -17,7 +17,6 @@ const hpLineItemBase = z.object({
   wht_amount: z.coerce.number().nullable().optional(),
   wht_issue_date: z.string().nullable().optional(),
   net_paid_amount: z.coerce.number(),
-  asset_construction_detail: z.string().nullable().optional(),
 });
 
 export const hpLineItemSchema = hpLineItemBase.superRefine((line, ctx) => {
@@ -44,6 +43,7 @@ const hpBillHeaderFields = {
   hp_number: z.string().min(1, "กรุณาสร้างเลข HP"),
   transaction_date: z.string().min(1, "กรุณาเลือกวันที่"),
   work_type: z.enum(["ปกติ", "สร้างสินทรัพย์"]),
+  asset_construction_detail: z.string().nullable().optional(),
   vendor_id: z.string().uuid().nullable().optional(),
   vendor_name_snapshot: z.string().min(1, "กรุณาเลือกผู้จำหน่าย"),
   tax_invoice_number: z.string().nullable().optional(),
