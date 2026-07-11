@@ -1,22 +1,15 @@
 import { z } from "zod";
 
-// One vehicle's cost within a line's multi-vehicle breakdown table. UI-only — never sent to the
-// server as-is; bill-form.tsx expands each row into its own hp_payment_lines record on save
-// (spec 4.4's "แยกบันทึกเป็นหลายแถว 1 แถวต่อ 1 คัน", but without re-keying shared fields per row).
-const vehicleBreakdownRow = z.object({
-  vehicle_id: z.string().uuid().nullable(),
-  amount: z.coerce.number().min(0),
-});
-
-// One row of the editable line-items table (7.3). WHT fields live per-line because
-// hp_payment_lines stores them per row — a single HP bill can mix WHT and non-WHT lines.
+// One row of the editable line-items table (7.3): รายละเอียด / รหัสบัญชี / รหัสรถ / ค่าใช้จ่าย.
+// VAT and หัก ณ ที่จ่าย are a single decision for the whole bill (see BillForm) — bill-form.tsx
+// distributes the resulting amounts across each row proportionally before saving, since
+// hp_payment_lines still stores vat_amount/wht_amount per row (no separate header table).
 const hpLineItemBase = z.object({
   id: z.string().uuid().optional(),
   description: z.string().min(1, "กรุณากรอกรายละเอียด"),
   account_code_id: z.string().uuid().nullable().optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
   related_vehicles_text: z.string().nullable().optional(),
-  vehicleBreakdown: z.array(vehicleBreakdownRow).optional(),
   amount_before_vat: z.coerce.number().min(0),
   vat_amount: z.coerce.number().min(0),
   requires_wht: z.boolean().default(false),
@@ -75,8 +68,9 @@ export const hpBillDraftSchema = z.object({
   lines: z.array(hpLineItemBase).min(1, "ต้องมีอย่างน้อย 1 รายการย่อย"),
 });
 
-// "บันทึกและปิดงาน" — full validation per spec 4.3 (WHT category + amount required per line
-// when that line's toggle is on).
+// "บันทึกและปิดงาน" — full validation per spec 4.3 (WHT category + amount required when the
+// bill-level WHT toggle is on — gets distributed to every row before this runs, so they all
+// pass/fail together).
 export const hpBillFinalSchema = z.object({
   ...hpBillHeaderFields,
   lines: z.array(hpLineItemSchema).min(1, "ต้องมีอย่างน้อย 1 รายการย่อย"),

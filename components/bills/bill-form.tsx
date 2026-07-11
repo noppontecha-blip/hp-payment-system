@@ -9,6 +9,8 @@ import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,6 +29,7 @@ import {
   type HpBillFormValues,
 } from "@/lib/validations/hp-line";
 import { generateHpNumber, saveHpBill, deleteHpBill } from "@/lib/actions/bills";
+import { formatCurrency } from "@/lib/utils/format";
 import { toISODateString } from "@/lib/utils/thai-date";
 import type { Database } from "@/lib/types/database";
 
@@ -35,13 +38,18 @@ type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
 type Account = Database["public"]["Tables"]["chart_of_accounts"]["Row"];
 type WhtCategory = Database["public"]["Tables"]["wht_categories"]["Row"];
 
+const NONE = "__none__";
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function emptyLine(): HpBillFormValues["lines"][number] {
   return {
     description: "",
     account_code_id: null,
     vehicle_id: null,
     related_vehicles_text: "",
-    vehicleBreakdown: [],
     amount_before_vat: 0,
     vat_amount: 0,
     requires_wht: false,
@@ -51,47 +59,6 @@ function emptyLine(): HpBillFormValues["lines"][number] {
     wht_amount: null,
     net_paid_amount: 0,
   };
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
-// A line with a multi-vehicle breakdown table is one form "card" but becomes N real
-// hp_payment_lines rows on save — one per vehicle, each with VAT/WHT computed on its own
-// amount. Only the first row keeps the original line's id (update-in-place); the rest are
-// new inserts. This is what lets the user fill shared fields (description, account, WHT) once
-// instead of re-keying them for every vehicle.
-function expandVehicleBreakdown(lines: HpBillFormValues["lines"]): HpBillFormValues["lines"] {
-  const expanded: HpBillFormValues["lines"] = [];
-  for (const line of lines) {
-    const breakdown = line.vehicleBreakdown ?? [];
-    const base = { ...line };
-    delete base.vehicleBreakdown;
-    if (breakdown.length === 0) {
-      expanded.push(base);
-      continue;
-    }
-    const vatEnabled = (line.vat_amount ?? 0) > 0;
-    breakdown.forEach((row, i) => {
-      const amount = row.amount || 0;
-      const vat = vatEnabled ? round2(amount * 0.07) : 0;
-      const wht =
-        line.requires_wht && line.wht_rate_pct != null
-          ? round2(amount * (line.wht_rate_pct / 100))
-          : 0;
-      expanded.push({
-        ...base,
-        id: i === 0 ? base.id : undefined,
-        vehicle_id: row.vehicle_id,
-        amount_before_vat: amount,
-        vat_amount: vat,
-        wht_amount: line.requires_wht ? wht : null,
-        net_paid_amount: round2(amount + vat - wht),
-      });
-    });
-  }
-  return expanded;
 }
 
 export function BillForm({
@@ -114,6 +81,15 @@ export function BillForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [currentHpNumber, setCurrentHpNumber] = useState(hpNumber);
+
+  // VAT and หัก ณ ที่จ่าย are one decision for the whole bill (not per line) — reconstructed
+  // from the first saved line when editing, since every row is written with the same settings.
+  const firstLine = initialValues?.lines[0];
+  const [vatEnabled, setVatEnabled] = useState(() => !firstLine || (firstLine.vat_amount ?? 0) > 0);
+  const [requiresWht, setRequiresWht] = useState(() => firstLine?.requires_wht ?? false);
+  const [whtCategoryId, setWhtCategoryId] = useState<string | null>(firstLine?.wht_category_id ?? null);
+  const [whtRatePct, setWhtRatePct] = useState<number | null>(firstLine?.wht_rate_pct ?? null);
+  const [whtPayeeName, setWhtPayeeName] = useState(firstLine?.wht_payee_name ?? "");
 
   const defaultValues: HpBillFormValues = initialValues ?? {
     hp_number: hpNumber,
@@ -151,16 +127,32 @@ export function BillForm({
   const vendorId = watch("vendor_id");
   const vendorName = watch("vendor_name_snapshot");
 
-  const totals = linesWatch.reduce(
-    (acc, l) => {
-      acc.beforeVat += l.amount_before_vat || 0;
-      acc.vat += l.vat_amount || 0;
-      acc.wht += l.requires_wht ? l.wht_amount || 0 : 0;
-      acc.net += l.net_paid_amount || 0;
-      return acc;
-    },
-    { beforeVat: 0, vat: 0, wht: 0, net: 0 },
-  );
+  const totalBeforeVat = round2(linesWatch.reduce((sum, l) => sum + (l.amount_before_vat || 0), 0));
+  const vatAmount = vatEnabled ? round2(totalBeforeVat * 0.07) : 0;
+  const whtAmount =
+    requiresWht && whtRatePct != null ? round2(totalBeforeVat * (whtRatePct / 100)) : 0;
+  const netTotal = round2(totalBeforeVat + vatAmount - whtAmount);
+
+  // hp_payment_lines still stores vat_amount/wht_amount per row (no header table) — distribute
+  // the one bill-level VAT/WHT decision across each row proportionally to its own amount so the
+  // per-row figures sum exactly to the totals shown above.
+  function buildLinesForSubmit(): HpBillFormValues["lines"] {
+    return getValues("lines").map((line) => {
+      const amount = line.amount_before_vat || 0;
+      const vat = vatEnabled ? round2(amount * 0.07) : 0;
+      const wht = requiresWht && whtRatePct != null ? round2(amount * (whtRatePct / 100)) : 0;
+      return {
+        ...line,
+        vat_amount: vat,
+        requires_wht: requiresWht,
+        wht_category_id: requiresWht ? whtCategoryId : null,
+        wht_rate_pct: requiresWht ? whtRatePct : null,
+        wht_payee_name: requiresWht ? whtPayeeName : null,
+        wht_amount: requiresWht ? wht : null,
+        net_paid_amount: round2(amount + vat - wht),
+      };
+    });
+  }
 
   function handleRegenerate() {
     startTransition(async () => {
@@ -177,7 +169,7 @@ export function BillForm({
 
   function onSave(saveMode: "draft" | "final") {
     const rawValues = getValues();
-    const values = { ...rawValues, lines: expandVehicleBreakdown(rawValues.lines) };
+    const values = { ...rawValues, lines: buildLinesForSubmit() };
     const schema = saveMode === "final" ? hpBillFinalSchema : hpBillDraftSchema;
     const parsed = schema.safeParse(values);
     if (!parsed.success) {
@@ -299,26 +291,110 @@ export function BillForm({
               เพิ่มรายการ
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            ถ้ารายการนี้เกี่ยวข้องกับรถ/เครนมากกว่า 1 คัน กด &quot;แยกยอดตามรถหลายคัน&quot; ในแต่ละแถว
-            เพื่อกรอกยอดต่อคันโดยไม่ต้องกรอกรายละเอียด/รหัสบัญชีซ้ำ — ระบบจะบันทึกเป็นคนละแถวต่อคันให้อัตโนมัติ
-          </p>
-          <div className="space-y-4">
-            {fields.map((field, index) => (
-              <LineItemRow
-                key={field.id}
-                index={index}
-                control={control}
-                setValue={setValue}
-                getValues={getValues}
-                accounts={accounts}
-                vehicles={vehicles}
-                whtCategories={whtCategories}
-                onRemove={() => remove(index)}
-                removable={fields.length > 1}
-              />
-            ))}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[10.5px] font-bold tracking-wide text-muted-foreground uppercase">
+                  <th className="p-2">รายละเอียด</th>
+                  <th className="p-2">รหัสบัญชี</th>
+                  <th className="p-2">รหัสรถ/เครน</th>
+                  <th className="p-2">ค่าใช้จ่าย</th>
+                  <th className="w-9 p-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {fields.map((field, index) => (
+                  <LineItemRow
+                    key={field.id}
+                    index={index}
+                    control={control}
+                    accounts={accounts}
+                    vehicles={vehicles}
+                    onRemove={() => remove(index)}
+                    removable={fields.length > 1}
+                  />
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-border font-semibold text-ink">
+                  <td className="p-2" colSpan={3}>
+                    ค่าใช้จ่ายรวม
+                  </td>
+                  <td className="p-2 font-mono">{formatCurrency(totalBeforeVat)}</td>
+                  <td className="p-2" />
+                </tr>
+              </tfoot>
+            </table>
           </div>
+
+          {/* VAT — one decision for the whole bill */}
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <Label>VAT 7%</Label>
+            <Switch checked={vatEnabled} onCheckedChange={setVatEnabled} />
+          </div>
+          {vatEnabled && (
+            <div className="flex animate-in fade-in slide-in-from-top-1 items-center justify-between rounded-lg bg-info-bg px-3 py-2 text-sm">
+              <span className="text-muted-foreground">ยอด VAT 7% (คำนวณอัตโนมัติ)</span>
+              <span className="font-mono font-semibold text-info">{formatCurrency(vatAmount)}</span>
+            </div>
+          )}
+
+          {/* หัก ณ ที่จ่าย — one decision for the whole bill */}
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <Label>ต้องหัก ณ ที่จ่าย</Label>
+            <Switch checked={requiresWht} onCheckedChange={setRequiresWht} />
+          </div>
+          {requiresWht && (
+            <div className="grid animate-in fade-in slide-in-from-top-1 grid-cols-1 gap-3 rounded-lg bg-warn-bg p-4 sm:grid-cols-3">
+              <FormField label="หมวดหัก ณ ที่จ่าย" required>
+                <Select
+                  value={whtCategoryId ?? NONE}
+                  onValueChange={(v) => {
+                    if (v === NONE) {
+                      setWhtCategoryId(null);
+                      return;
+                    }
+                    setWhtCategoryId(v);
+                    const category = whtCategories.find((c) => c.id === v);
+                    setWhtRatePct(category?.default_rate_pct ?? null);
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="เลือกหมวด">
+                      {(value: string) => {
+                        if (value === NONE) return "ไม่ระบุ";
+                        const category = whtCategories.find((c) => c.id === value);
+                        if (!category) return undefined;
+                        return `${category.name}${category.default_rate_pct != null ? ` (${category.default_rate_pct}%)` : ""}`;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
+                    {whtCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {c.default_rate_pct != null ? ` (${c.default_rate_pct}%)` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="ชื่อผู้รับเงิน (ใบหัก)">
+                <Input
+                  value={whtPayeeName ?? ""}
+                  onChange={(e) => setWhtPayeeName(e.target.value)}
+                  className="bg-background"
+                />
+              </FormField>
+              <FormField label="ยอดหัก ณ ที่จ่าย (คำนวณอัตโนมัติ)">
+                <div className="flex h-8 items-center rounded-lg bg-background px-2.5 font-mono text-sm font-semibold text-warn">
+                  {formatCurrency(whtAmount)}
+                </div>
+              </FormField>
+            </div>
+          )}
         </div>
 
         {/* Payment section */}
@@ -383,12 +459,7 @@ export function BillForm({
         </div>
       </div>
 
-      <SummarySidebar
-        beforeVat={totals.beforeVat}
-        vat={totals.vat}
-        wht={totals.wht}
-        net={totals.net}
-      />
+      <SummarySidebar beforeVat={totalBeforeVat} vat={vatAmount} wht={whtAmount} net={netTotal} />
     </form>
   );
 }
