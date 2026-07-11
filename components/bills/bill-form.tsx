@@ -326,7 +326,7 @@ export function BillForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-[10.5px] font-bold tracking-wide text-muted-foreground uppercase">
+                <tr className="border-b border-border text-left text-[11.5px] font-bold tracking-wide text-muted-foreground uppercase">
                   <th className="p-2">รายละเอียด</th>
                   <th className="p-2">รหัสบัญชี</th>
                   <th className="p-2">รหัสรถ/เครน</th>

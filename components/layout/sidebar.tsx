@@ -44,7 +44,7 @@ function NavGroup({
 }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 text-[10px] font-bold tracking-[0.1em] text-muted-2 uppercase">{title}</p>
+      <p className="px-3 text-[11px] font-bold tracking-[0.1em] text-muted-2 uppercase">{title}</p>
       {items.map((item) => {
         const active =
           item.href === "/bills"
@@ -56,7 +56,7 @@ function NavGroup({
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-[#3D4757] transition-colors hover:bg-secondary",
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-[#3D4757] transition-colors hover:bg-secondary",
               active && "bg-navy font-semibold text-white hover:bg-navy",
             )}
           >
@@ -81,7 +81,7 @@ export function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[216px] shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside className="flex h-full w-[248px] shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="px-5 py-6">
         <p className="text-[21px] font-bold text-ink">SPK Crane</p>
         <p className="text-xs text-muted-foreground">ระบบบัญชีคุมบิลจ่าย HP</p>
@@ -91,7 +91,7 @@ export function Sidebar({
         <NavGroup
           title={
             <>
-              ข้อมูล <span className="text-[9px]">MASTER</span>
+              ข้อมูล <span className="text-[10px]">MASTER</span>
             </>
           }
           items={masterMenu}
