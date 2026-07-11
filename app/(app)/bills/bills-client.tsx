@@ -218,7 +218,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                       {line.vendor_name_snapshot}
                     </Link>
                   </TableCell>
-                  <TableCell className="max-w-64 truncate">{line.description}</TableCell>
+                  <TableCell className="max-w-64 truncate text-xs font-normal">{line.description}</TableCell>
                   <TableCell>
                     <CategoryTag label={line.work_type} />
                   </TableCell>
