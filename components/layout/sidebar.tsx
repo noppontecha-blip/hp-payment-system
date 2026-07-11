@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -7,6 +8,7 @@ import {
   ReceiptText,
   FilePlus,
   FileCheck2,
+  FileSpreadsheet,
   Building2,
   Truck,
   BookOpenText,
@@ -20,7 +22,8 @@ const mainMenu = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/bills", label: "รายการบิล", icon: ReceiptText },
   { href: "/bills/new", label: "สร้างบิล", icon: FilePlus },
-  { href: "/wht-tracking", label: "ติดตามใบหัก", icon: FileCheck2 },
+  { href: "/document-tracking", label: "ติดตามเอกสารซื้อ", icon: FileCheck2 },
+  { href: "/tax-report", label: "รายงานภาษีซื้อ", icon: FileSpreadsheet },
 ];
 
 const masterMenu = [
@@ -35,7 +38,7 @@ function NavGroup({
   items,
   pathname,
 }: {
-  title: string;
+  title: ReactNode;
   items: typeof mainMenu;
   pathname: string;
 }) {
@@ -85,7 +88,15 @@ export function Sidebar({
       </div>
       <nav className="flex flex-1 flex-col gap-6 px-3">
         <NavGroup title="เมนูหลัก" items={mainMenu} pathname={pathname} />
-        <NavGroup title="ข้อมูล MASTER" items={masterMenu} pathname={pathname} />
+        <NavGroup
+          title={
+            <>
+              ข้อมูล <span className="text-[9px]">MASTER</span>
+            </>
+          }
+          items={masterMenu}
+          pathname={pathname}
+        />
       </nav>
       <div className="mx-3 mb-3 rounded-lg border border-border p-3">
         <p className="text-[11px] text-muted-foreground">อัปเดตข้อมูล ณ</p>

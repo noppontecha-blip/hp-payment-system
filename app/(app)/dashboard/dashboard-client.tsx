@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { FileClock, FileText, ReceiptText, Wallet } from "lucide-react";
+import { FileText, Percent, ReceiptText, Wallet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -39,7 +39,7 @@ export function DashboardClient({
   billsThisYear,
   netPaidThisYear,
   pendingDocCount,
-  pendingWhtCount,
+  whtTotalThisYear,
   monthlySeries,
   categorySeries,
   recentLines,
@@ -48,7 +48,7 @@ export function DashboardClient({
   billsThisYear: number;
   netPaidThisYear: number;
   pendingDocCount: number;
-  pendingWhtCount: number;
+  whtTotalThisYear: number;
   monthlySeries: { month: string; total: number }[];
   categorySeries: { name: string; total: number }[];
   recentLines: Line[];
@@ -71,15 +71,15 @@ export function DashboardClient({
           accent="info"
         />
         <KpiCard
-          label="บิลที่รอเอกสารจากสนง.บัญชี"
+          label="บิลที่ยังไม่มีเอกสารซื้อ"
           value={`${pendingDocCount} บิล`}
           icon={<FileText className="size-4" />}
           accent="warn"
         />
         <KpiCard
-          label="ใบหัก ณ ที่จ่ายที่รอออก"
-          value={`${pendingWhtCount} รายการ`}
-          icon={<FileClock className="size-4" />}
+          label="รวมยอดหัก ณ ที่จ่าย (ปีนี้)"
+          value={formatCurrency(whtTotalThisYear)}
+          icon={<Percent className="size-4" />}
           accent="warn"
         />
       </div>
@@ -134,7 +134,7 @@ export function DashboardClient({
                 <TableHead>ผู้จำหน่าย</TableHead>
                 <TableHead>รายละเอียด</TableHead>
                 <TableHead className="text-right">สุทธิ</TableHead>
-                <TableHead>สถานะเอกสาร</TableHead>
+                <TableHead>เอกสารซื้อ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,10 +160,7 @@ export function DashboardClient({
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      label={line.accounting_office_doc_status}
-                      tone={docStatusTone(line.accounting_office_doc_status)}
-                    />
+                    <StatusBadge label={line.document_type} tone={docStatusTone(line.document_type)} />
                   </TableCell>
                 </TableRow>
               ))}

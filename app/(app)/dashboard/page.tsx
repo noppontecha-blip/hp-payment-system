@@ -44,7 +44,9 @@ export default async function DashboardPage() {
     .reduce((sum, l) => sum + l.net_paid_amount, 0);
 
   const pendingDocCount = allVouchers.filter((v) => v.doc_pending).length;
-  const pendingWhtCount = allLines.filter((l) => l.requires_wht && !l.wht_issue_date).length;
+  const whtTotalThisYear = allLines
+    .filter((l) => l.requires_wht && new Date(l.transaction_date).getFullYear() === currentYear)
+    .reduce((sum, l) => sum + (l.wht_amount ?? 0), 0);
 
   const monthlyBuckets = new Map<string, number>();
   for (let i = 11; i >= 0; i--) {
@@ -86,14 +88,14 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="ภาพรวมบิลจ่าย HP"
         metaChip={`บิลปีนี้ ${billsThisYear} บิล`}
-        hasNotification={pendingWhtCount > 0}
+        hasNotification={pendingDocCount > 0}
       />
       <DashboardClient
         billsThisMonth={billsThisMonth}
         billsThisYear={billsThisYear}
         netPaidThisYear={netPaidThisYear}
         pendingDocCount={pendingDocCount}
-        pendingWhtCount={pendingWhtCount}
+        whtTotalThisYear={whtTotalThisYear}
         monthlySeries={monthlySeries}
         categorySeries={categorySeries}
         recentLines={recentLines}

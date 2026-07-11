@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const to = searchParams.get("to");
   const workType = searchParams.get("workType");
   const vendorId = searchParams.get("vendorId");
-  const docStatus = searchParams.get("docStatus");
+  const documentType = searchParams.get("documentType");
   const wht = searchParams.get("wht");
   const search = searchParams.get("search");
 
@@ -22,10 +22,10 @@ export async function GET(request: Request) {
   if (to) query = query.lte("transaction_date", to);
   if (workType) query = query.eq("work_type", workType as "ปกติ" | "สร้างสินทรัพย์");
   if (vendorId) query = query.eq("vendor_id", vendorId);
-  if (docStatus)
+  if (documentType)
     query = query.eq(
-      "accounting_office_doc_status",
-      docStatus as "ครบถ้วน" | "รอเอกสารจากสนง.บัญชี",
+      "document_type",
+      documentType as "ใบกำกับภาษี" | "บิลเงินสด" | "ยังไม่มีเอกสาร",
     );
   if (wht === "yes") query = query.eq("requires_wht", true);
   if (wht === "no") query = query.eq("requires_wht", false);
@@ -51,7 +51,8 @@ export async function GET(request: Request) {
     { header: "VAT", key: "vat_amount", width: 12 },
     { header: "หัก ณ ที่จ่าย", key: "wht_amount", width: 14 },
     { header: "สุทธิ", key: "net_paid_amount", width: 14 },
-    { header: "สถานะเอกสาร", key: "doc_status", width: 20 },
+    { header: "เอกสารซื้อ", key: "doc_status", width: 20 },
+    { header: "เลขที่เอกสาร", key: "document_number", width: 18 },
   ];
 
   (lines ?? []).forEach((l) => {
@@ -65,7 +66,8 @@ export async function GET(request: Request) {
       vat_amount: l.vat_amount,
       wht_amount: l.requires_wht ? (l.wht_amount ?? 0) : 0,
       net_paid_amount: l.net_paid_amount,
-      doc_status: l.accounting_office_doc_status,
+      doc_status: l.document_type,
+      document_number: l.document_number ?? "",
     });
   });
   sheet.getRow(1).font = { bold: true };

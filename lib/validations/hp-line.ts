@@ -48,14 +48,20 @@ const hpBillHeaderFields = {
   asset_construction_detail: z.string().nullable().optional(),
   vendor_id: z.string().uuid().nullable().optional(),
   vendor_name_snapshot: z.string().min(1, "กรุณาเลือกผู้จำหน่าย"),
-  tax_invoice_number: z.string().nullable().optional(),
-  bill_number: z.string().nullable().optional(),
-  payment_account: z.string().nullable().optional(),
+  // เอกสารที่ได้รับจากผู้จำหน่าย — บางรายออกใบกำกับภาษี บางรายออกบิลเงินสด บางบิลยังไม่มีเอกสาร
+  // (รายการที่ "ยังไม่มีเอกสาร" จะไปโผล่ในหน้าติดตามเอกสารซื้อ)
+  document_type: z
+    .enum(["ใบกำกับภาษี", "บิลเงินสด", "ยังไม่มีเอกสาร"])
+    .default("ยังไม่มีเอกสาร"),
+  document_number: z.string().nullable().optional(),
+  // ใช้ทำรายงานภาษีซื้อ — มีค่าเฉพาะตอน document_type = "ใบกำกับภาษี"
+  document_invoice_date: z.string().nullable().optional(),
+  // วิธีการจ่ายเงิน — จ่ายผ่านบัญชีธนาคารบริษัทฯ หรือมีคนสำรองจ่ายไปก่อน
+  payment_method: z.enum(["บัญชีธนาคารบริษัท", "สำรองจ่าย"]).nullable().optional(),
+  payment_date: z.string().nullable().optional(),
   advance_payer_name: z.string().nullable().optional(),
+  // วันที่บริษัทคืนเงินให้ผู้สำรองจ่าย (มีค่า = คืนแล้ว)
   spk_repaid_date: z.string().nullable().optional(),
-  accounting_office_doc_status: z
-    .enum(["ครบถ้วน", "รอเอกสารจากสนง.บัญชี"])
-    .default("ครบถ้วน"),
   notes: z.string().nullable().optional(),
 };
 

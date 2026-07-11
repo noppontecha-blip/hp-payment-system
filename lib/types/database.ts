@@ -98,8 +98,9 @@ export type Database = {
           work_type: "ปกติ" | "สร้างสินทรัพย์";
           asset_construction_detail: string | null;
           special_category: string | null;
-          tax_invoice_number: string | null;
-          bill_number: string | null;
+          document_type: "ใบกำกับภาษี" | "บิลเงินสด" | "ยังไม่มีเอกสาร";
+          document_number: string | null;
+          document_invoice_date: string | null;
           vendor_id: string | null;
           vendor_name_snapshot: string;
           description: string;
@@ -115,10 +116,10 @@ export type Database = {
           wht_amount: number | null;
           wht_issue_date: string | null;
           net_paid_amount: number;
-          payment_account: string | null;
+          payment_method: "บัญชีธนาคารบริษัท" | "สำรองจ่าย" | null;
+          payment_date: string | null;
           advance_payer_name: string | null;
           spk_repaid_date: string | null;
-          accounting_office_doc_status: "ครบถ้วน" | "รอเอกสารจากสนง.บัญชี";
           notes: string | null;
           recorded_by: string | null;
           created_at: string;

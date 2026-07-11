@@ -22,6 +22,6 @@ export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
   );
 }
 
-export function docStatusTone(status: string): Tone {
-  return status === "ครบถ้วน" ? "success" : "warn";
+export function docStatusTone(documentType: string): Tone {
+  return documentType === "ยังไม่มีเอกสาร" ? "warn" : "success";
 }

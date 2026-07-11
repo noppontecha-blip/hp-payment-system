@@ -7,7 +7,6 @@ import {
   hpBillFinalSchema,
   type HpBillFormValues,
 } from "@/lib/validations/hp-line";
-import { toISODateString } from "@/lib/utils/thai-date";
 import type { Database } from "@/lib/types/database";
 
 type HpLineInsert = Database["public"]["Tables"]["hp_payment_lines"]["Insert"];
@@ -69,7 +68,7 @@ export async function saveHpBill(input: HpBillFormValues, mode: "draft" | "final
   revalidatePath("/bills");
   revalidatePath(`/bills/${header.hp_number}/edit`);
   revalidatePath("/dashboard");
-  revalidatePath("/wht-tracking");
+  revalidatePath("/document-tracking");
 
   return { hp_number: header.hp_number };
 }
@@ -80,14 +79,5 @@ export async function deleteHpBill(hpNumber: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/bills");
   revalidatePath("/dashboard");
-}
-
-export async function issueWhtCertificate(lineId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("hp_payment_lines")
-    .update({ wht_issue_date: toISODateString(new Date()) })
-    .eq("id", lineId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/wht-tracking");
+  revalidatePath("/document-tracking");
 }

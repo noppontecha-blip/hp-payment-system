@@ -98,12 +98,13 @@ export function BillForm({
     asset_construction_detail: "",
     vendor_id: null,
     vendor_name_snapshot: "",
-    tax_invoice_number: "",
-    bill_number: "",
-    payment_account: "",
+    document_type: "ยังไม่มีเอกสาร",
+    document_number: "",
+    document_invoice_date: null,
+    payment_method: null,
+    payment_date: null,
     advance_payer_name: "",
     spk_repaid_date: null,
-    accounting_office_doc_status: "ครบถ้วน",
     notes: "",
     lines: [emptyLine()],
   };
@@ -126,6 +127,8 @@ export function BillForm({
   const linesWatch = watch("lines");
   const vendorId = watch("vendor_id");
   const vendorName = watch("vendor_name_snapshot");
+  const documentType = watch("document_type");
+  const paymentMethod = watch("payment_method");
 
   const totalBeforeVat = round2(linesWatch.reduce((sum, l) => sum + (l.amount_before_vat || 0), 0));
   const vatAmount = vatEnabled ? round2(totalBeforeVat * 0.07) : 0;
@@ -267,12 +270,40 @@ export function BillForm({
               />
             </FormField>
 
-            <FormField label="เลขใบกำกับภาษี">
-              <Input {...register("tax_invoice_number")} />
-            </FormField>
-            <FormField label="เลขที่บิล">
-              <Input {...register("bill_number")} />
-            </FormField>
+            <Controller
+              control={control}
+              name="document_type"
+              render={({ field }) => (
+                <FormField label="เอกสารที่ได้รับ">
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
+                      <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
+                      <SelectItem value="ยังไม่มีเอกสาร">ยังไม่มีเอกสาร</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+            />
+            {documentType !== "ยังไม่มีเอกสาร" && (
+              <FormField label="เลขที่เอกสาร">
+                <Input {...register("document_number")} placeholder="ไม่จำเป็นต้องกรอกก็ได้" />
+              </FormField>
+            )}
+            {documentType === "ใบกำกับภาษี" && (
+              <Controller
+                control={control}
+                name="document_invoice_date"
+                render={({ field }) => (
+                  <FormField label="วันที่ในใบกำกับภาษี">
+                    <ThaiDatePicker value={field.value} onChange={field.onChange} />
+                  </FormField>
+                )}
+              />
+            )}
 
             {workType === "สร้างสินทรัพย์" && (
               <FormField label="รายละเอียดงานสร้างสินทรัพย์" className="sm:col-span-2">
@@ -397,42 +428,55 @@ export function BillForm({
           )}
         </div>
 
-        {/* Payment section */}
+        {/* Payment section — usually filled in later, after the bill itself is entered */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-ink">การจ่ายเงิน</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="บัญชีที่จ่าย">
-              <Input {...register("payment_account")} />
-            </FormField>
-            <FormField label="ผู้สำรองจ่าย">
-              <Input {...register("advance_payer_name")} />
-            </FormField>
             <Controller
               control={control}
-              name="spk_repaid_date"
+              name="payment_method"
               render={({ field }) => (
-                <FormField label="วันที่ SPK จ่ายคืน">
-                  <ThaiDatePicker value={field.value} onChange={field.onChange} />
-                </FormField>
-              )}
-            />
-            <Controller
-              control={control}
-              name="accounting_office_doc_status"
-              render={({ field }) => (
-                <FormField label="สถานะเอกสารจากสนง.บัญชี">
-                  <Select value={field.value} onValueChange={field.onChange}>
+                <FormField label="วิธีการจ่าย">
+                  <Select value={field.value ?? NONE} onValueChange={(v) => field.onChange(v === NONE ? null : v)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue placeholder="เลือกวิธีการจ่าย">
+                        {(value: string) => (value === NONE ? "ยังไม่ระบุ" : value)}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ครบถ้วน">ครบถ้วน</SelectItem>
-                      <SelectItem value="รอเอกสารจากสนง.บัญชี">รอเอกสารจากสนง.บัญชี</SelectItem>
+                      <SelectItem value={NONE}>ยังไม่ระบุ</SelectItem>
+                      <SelectItem value="บัญชีธนาคารบริษัท">จ่ายผ่านบัญชีธนาคารบริษัทฯ</SelectItem>
+                      <SelectItem value="สำรองจ่าย">สำรองจ่าย</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormField>
               )}
             />
+            <Controller
+              control={control}
+              name="payment_date"
+              render={({ field }) => (
+                <FormField label="วันที่จ่าย">
+                  <ThaiDatePicker value={field.value} onChange={field.onChange} />
+                </FormField>
+              )}
+            />
+            {paymentMethod === "สำรองจ่าย" && (
+              <>
+                <FormField label="ชื่อผู้สำรองจ่าย">
+                  <Input {...register("advance_payer_name")} />
+                </FormField>
+                <Controller
+                  control={control}
+                  name="spk_repaid_date"
+                  render={({ field }) => (
+                    <FormField label="วันที่คืนเงินให้ผู้สำรองจ่าย">
+                      <ThaiDatePicker value={field.value} onChange={field.onChange} />
+                    </FormField>
+                  )}
+                />
+              </>
+            )}
           </div>
           <FormField label="หมายเหตุ">
             <Textarea {...register("notes")} rows={2} />

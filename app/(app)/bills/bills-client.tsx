@@ -42,7 +42,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
   const [to, setTo] = useState<string | null>(null);
   const [workType, setWorkType] = useState(ALL);
   const [vendorId, setVendorId] = useState(ALL);
-  const [docStatus, setDocStatus] = useState(ALL);
+  const [documentType, setDocumentType] = useState(ALL);
   const [whtFilter, setWhtFilter] = useState(ALL);
 
   const filtered = useMemo(() => {
@@ -52,7 +52,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
       if (to && line.transaction_date > to) return false;
       if (workType !== ALL && line.work_type !== workType) return false;
       if (vendorId !== ALL && line.vendor_id !== vendorId) return false;
-      if (docStatus !== ALL && line.accounting_office_doc_status !== docStatus) return false;
+      if (documentType !== ALL && line.document_type !== documentType) return false;
       if (whtFilter === "yes" && !line.requires_wht) return false;
       if (whtFilter === "no" && line.requires_wht) return false;
       if (
@@ -64,7 +64,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         return false;
       return true;
     });
-  }, [lines, search, from, to, workType, vendorId, docStatus, whtFilter]);
+  }, [lines, search, from, to, workType, vendorId, documentType, whtFilter]);
 
   function handleExport() {
     const params = new URLSearchParams();
@@ -72,7 +72,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
     if (to) params.set("to", to);
     if (workType !== ALL) params.set("workType", workType);
     if (vendorId !== ALL) params.set("vendorId", vendorId);
-    if (docStatus !== ALL) params.set("docStatus", docStatus);
+    if (documentType !== ALL) params.set("documentType", documentType);
     if (whtFilter !== ALL) params.set("wht", whtFilter);
     if (search.trim()) params.set("search", search.trim());
     window.location.href = `/api/bills/export?${params.toString()}`;
@@ -131,17 +131,18 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
             </SelectContent>
           </Select>
         </FilterField>
-        <FilterField label="สถานะเอกสาร" className="w-52">
-          <Select value={docStatus} onValueChange={(v) => setDocStatus(v ?? ALL)}>
+        <FilterField label="เอกสารซื้อ" className="w-52">
+          <Select value={documentType} onValueChange={(v) => setDocumentType(v ?? ALL)}>
             <SelectTrigger className={cn(filterTriggerClassName, "w-full")}>
-              <SelectValue placeholder="สถานะเอกสาร">
+              <SelectValue placeholder="เอกสารซื้อ">
                 {(value: string) => (value === ALL ? "ทุกสถานะเอกสาร" : value)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>ทุกสถานะเอกสาร</SelectItem>
-              <SelectItem value="ครบถ้วน">ครบถ้วน</SelectItem>
-              <SelectItem value="รอเอกสารจากสนง.บัญชี">รอเอกสารจากสนง.บัญชี</SelectItem>
+              <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
+              <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
+              <SelectItem value="ยังไม่มีเอกสาร">ยังไม่มีเอกสาร</SelectItem>
             </SelectContent>
           </Select>
         </FilterField>
@@ -187,7 +188,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                 <TableHead className="text-right">VAT</TableHead>
                 <TableHead className="text-right">หัก ณ ที่จ่าย</TableHead>
                 <TableHead className="text-right">สุทธิ</TableHead>
-                <TableHead>สถานะเอกสาร</TableHead>
+                <TableHead>เอกสารซื้อ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,7 +205,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                   onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
                   className={cn(
                     "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
-                    line.accounting_office_doc_status === "รอเอกสารจากสนง.บัญชี" && "bg-warn-bg/40",
+                    line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                   )}
                 >
                   <TableCell className="font-mono">{line.hp_number}</TableCell>
@@ -231,10 +232,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      label={line.accounting_office_doc_status}
-                      tone={docStatusTone(line.accounting_office_doc_status)}
-                    />
+                    <StatusBadge label={line.document_type} tone={docStatusTone(line.document_type)} />
                   </TableCell>
                 </TableRow>
               ))}
