@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
+import { FilterField, filterTriggerClassName } from "@/components/shared/filter-field";
 import { StatusBadge, docStatusTone } from "@/components/shared/status-badge";
 import { CategoryTag } from "@/components/shared/category-tag";
 import { formatCurrency } from "@/lib/utils/format";
@@ -80,76 +81,86 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
   return (
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="relative w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="ค้นหาเลข HP, ผู้จำหน่าย, รายละเอียด..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <div className="w-40">
-          <ThaiDatePicker value={from} onChange={setFrom} />
-        </div>
-        <div className="w-40">
-          <ThaiDatePicker value={to} onChange={setTo} />
-        </div>
-        <Select value={workType} onValueChange={(v) => setWorkType(v ?? ALL)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="ประเภทงาน">
-              {(value: string) => (value === ALL ? "ทุกประเภทงาน" : value)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>ทุกประเภทงาน</SelectItem>
-            <SelectItem value="ปกติ">ปกติ</SelectItem>
-            <SelectItem value="สร้างสินทรัพย์">สร้างสินทรัพย์</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={vendorId} onValueChange={(v) => setVendorId(v ?? ALL)}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="ผู้จำหน่าย">
-              {(value: string) =>
-                value === ALL ? "ทุกผู้จำหน่าย" : (vendors.find((v) => v.id === value)?.name ?? undefined)
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>ทุกผู้จำหน่าย</SelectItem>
-            {vendors.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={docStatus} onValueChange={(v) => setDocStatus(v ?? ALL)}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="สถานะเอกสาร">
-              {(value: string) => (value === ALL ? "ทุกสถานะเอกสาร" : value)}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>ทุกสถานะเอกสาร</SelectItem>
-            <SelectItem value="ครบถ้วน">ครบถ้วน</SelectItem>
-            <SelectItem value="รอเอกสารจากสนง.บัญชี">รอเอกสารจากสนง.บัญชี</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={whtFilter} onValueChange={(v) => setWhtFilter(v ?? ALL)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="หัก ณ ที่จ่าย">
-              {(value: string) =>
-                value === ALL ? "ทั้งหมด" : value === "yes" ? "ต้องหัก" : "ไม่ต้องหัก"
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>ทั้งหมด</SelectItem>
-            <SelectItem value="yes">ต้องหัก</SelectItem>
-            <SelectItem value="no">ไม่ต้องหัก</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterField label="ค้นหา" className="w-64">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="เลข HP, ผู้จำหน่าย, รายละเอียด..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="rounded-[8px] pl-8 text-[12.5px]"
+            />
+          </div>
+        </FilterField>
+        <FilterField label="จากวันที่" className="w-40">
+          <ThaiDatePicker value={from} onChange={setFrom} className={filterTriggerClassName} />
+        </FilterField>
+        <FilterField label="ถึงวันที่" className="w-40">
+          <ThaiDatePicker value={to} onChange={setTo} className={filterTriggerClassName} />
+        </FilterField>
+        <FilterField label="ประเภทงาน" className="w-40">
+          <Select value={workType} onValueChange={(v) => setWorkType(v ?? ALL)}>
+            <SelectTrigger className={cn(filterTriggerClassName, "w-full")}>
+              <SelectValue placeholder="ประเภทงาน">
+                {(value: string) => (value === ALL ? "ทุกประเภทงาน" : value)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>ทุกประเภทงาน</SelectItem>
+              <SelectItem value="ปกติ">ปกติ</SelectItem>
+              <SelectItem value="สร้างสินทรัพย์">สร้างสินทรัพย์</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label="ผู้จำหน่าย" className="w-48">
+          <Select value={vendorId} onValueChange={(v) => setVendorId(v ?? ALL)}>
+            <SelectTrigger className={cn(filterTriggerClassName, "w-full")}>
+              <SelectValue placeholder="ผู้จำหน่าย">
+                {(value: string) =>
+                  value === ALL ? "ทุกผู้จำหน่าย" : (vendors.find((v) => v.id === value)?.name ?? undefined)
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>ทุกผู้จำหน่าย</SelectItem>
+              {vendors.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label="สถานะเอกสาร" className="w-52">
+          <Select value={docStatus} onValueChange={(v) => setDocStatus(v ?? ALL)}>
+            <SelectTrigger className={cn(filterTriggerClassName, "w-full")}>
+              <SelectValue placeholder="สถานะเอกสาร">
+                {(value: string) => (value === ALL ? "ทุกสถานะเอกสาร" : value)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>ทุกสถานะเอกสาร</SelectItem>
+              <SelectItem value="ครบถ้วน">ครบถ้วน</SelectItem>
+              <SelectItem value="รอเอกสารจากสนง.บัญชี">รอเอกสารจากสนง.บัญชี</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label="หัก ณ ที่จ่าย" className="w-44">
+          <Select value={whtFilter} onValueChange={(v) => setWhtFilter(v ?? ALL)}>
+            <SelectTrigger className={cn(filterTriggerClassName, "w-full")}>
+              <SelectValue placeholder="หัก ณ ที่จ่าย">
+                {(value: string) =>
+                  value === ALL ? "ทั้งหมด" : value === "yes" ? "ต้องหัก" : "ไม่ต้องหัก"
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>ทั้งหมด</SelectItem>
+              <SelectItem value="yes">ต้องหัก</SelectItem>
+              <SelectItem value="no">ไม่ต้องหัก</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="size-4" />

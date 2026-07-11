@@ -32,7 +32,7 @@ import type { Database } from "@/lib/types/database";
 
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 
-const DONUT_COLORS = ["#F5A623", "#1B2A4E", "#2563EB", "#15803D", "#B45309", "#9333EA", "#94A3B8"];
+const CHART_COLORS = ["#1E2A4A", "#F0A431", "#3068C8", "#2E9B5C", "#D6871A", "#94A3B8", "#C4CAD4"];
 
 export function DashboardClient({
   billsThisMonth,
@@ -89,11 +89,11 @@ export function DashboardClient({
           <p className="mb-4 text-sm font-medium text-ink">ยอดจ่ายรายเดือน</p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthlySeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E8EF" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} width={70} tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              <Bar dataKey="total" fill="#F5A623" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total" fill="#1E2A4A" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -111,7 +111,7 @@ export function DashboardClient({
                 paddingAngle={2}
               >
                 {categorySeries.map((entry, index) => (
-                  <Cell key={entry.name} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                  <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => formatCurrency(Number(value))} />

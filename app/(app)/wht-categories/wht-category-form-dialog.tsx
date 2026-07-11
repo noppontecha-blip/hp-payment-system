@@ -4,12 +4,14 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerEyebrow,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,31 +73,34 @@ export function WhtCategoryFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{category ? "แก้ไขหมวดหัก ณ ที่จ่าย" : "เพิ่มหมวดหัก ณ ที่จ่าย"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField label="ชื่อหมวด" required error={errors.name?.message}>
-            <Input {...register("name")} placeholder="เช่น ค่าบริการ/ค่าจ้างทำของ" />
-          </FormField>
-          <FormField label="อัตราเริ่มต้น (%)" error={errors.default_rate_pct?.message}>
-            <Input type="number" step="0.01" {...register("default_rate_pct")} />
-          </FormField>
-          <FormField label="หมายเหตุอ้างอิง" error={errors.reference_note?.message}>
-            <Textarea {...register("reference_note")} rows={2} />
-          </FormField>
-          <DialogFooter>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <DrawerHeader>
+            <DrawerEyebrow>ข้อมูล MASTER</DrawerEyebrow>
+            <DrawerTitle>{category ? "แก้ไขหมวดหัก ณ ที่จ่าย" : "เพิ่มหมวดหัก ณ ที่จ่าย"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-4">
+            <FormField label="ชื่อหมวด" required error={errors.name?.message}>
+              <Input {...register("name")} placeholder="เช่น ค่าบริการ/ค่าจ้างทำของ" />
+            </FormField>
+            <FormField label="อัตราเริ่มต้น (%)" error={errors.default_rate_pct?.message}>
+              <Input type="number" step="0.01" {...register("default_rate_pct")} />
+            </FormField>
+            <FormField label="หมายเหตุอ้างอิง" error={errors.reference_note?.message}>
+              <Textarea {...register("reference_note")} rows={2} />
+            </FormField>
+          </DrawerBody>
+          <DrawerFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               บันทึก
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

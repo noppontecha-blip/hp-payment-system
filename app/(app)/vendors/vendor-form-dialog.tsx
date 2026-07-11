@@ -4,12 +4,14 @@ import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerEyebrow,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -100,80 +102,83 @@ export function VendorFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{vendor ? "แก้ไขผู้จำหน่าย" : "เพิ่มผู้จำหน่าย"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="รหัสผู้จำหน่าย" required error={errors.code?.message}>
-              <Input {...register("code")} placeholder="เช่น V01" />
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <DrawerHeader>
+            <DrawerEyebrow>ข้อมูล MASTER</DrawerEyebrow>
+            <DrawerTitle>{vendor ? "แก้ไขผู้จำหน่าย" : "เพิ่มผู้จำหน่าย"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="รหัสผู้จำหน่าย" required error={errors.code?.message}>
+                <Input {...register("code")} placeholder="เช่น V01" />
+              </FormField>
+              <FormField label="ชื่อผู้จำหน่าย" required error={errors.name?.message}>
+                <Input {...register("name")} />
+              </FormField>
+              <FormField label="รหัสบัญชีที่มักใช้" error={errors.account_code_hint?.message}>
+                <Input {...register("account_code_hint")} />
+              </FormField>
+              <FormField label="วิธีการชำระเงิน" error={errors.payment_method?.message}>
+                <Controller
+                  control={control}
+                  name="payment_method"
+                  render={({ field }) => (
+                    <Select value={field.value ?? undefined} onValueChange={(v) => field.onChange(v)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="เลือกวิธีการชำระเงิน" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="สด">สด</SelectItem>
+                        <SelectItem value="โอน">โอน</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+              <FormField label="อัตราหัก ณ ที่จ่าย (%) เริ่มต้น" error={errors.default_wht_pct?.message}>
+                <Input type="number" step="0.01" {...register("default_wht_pct")} />
+              </FormField>
+              <FormField label="หมวดหัก ณ ที่จ่ายเริ่มต้น" error={errors.default_wht_category?.message}>
+                <Input {...register("default_wht_category")} />
+              </FormField>
+              <FormField label="ชื่อในใบหัก ณ ที่จ่าย" error={errors.wht_certificate_name?.message}>
+                <Input {...register("wht_certificate_name")} />
+              </FormField>
+              <FormField label="เลขบัญชีธนาคาร" error={errors.bank_account?.message}>
+                <Input {...register("bank_account")} />
+              </FormField>
+              <FormField label="แหล่งที่มาเอกสาร" error={errors.document_source?.message}>
+                <Input {...register("document_source")} />
+              </FormField>
+              <FormField label="ข้อมูลติดต่อ" error={errors.contact_info?.message}>
+                <Input {...register("contact_info")} />
+              </FormField>
+              <FormField label="ประเภทงาน" error={errors.work_type?.message}>
+                <Input {...register("work_type")} placeholder="ขาย/ซ่อม/บริการ/รถร่วม" />
+              </FormField>
+              <FormField label="วิธีจัดส่ง" error={errors.delivery_method?.message}>
+                <Input {...register("delivery_method")} />
+              </FormField>
+              <FormField label="เลขประจำตัวผู้เสียภาษี" error={errors.tax_id?.message}>
+                <Input {...register("tax_id")} />
+              </FormField>
+            </div>
+            <FormField label="ที่อยู่จัดส่งเอกสาร" error={errors.mailing_address?.message}>
+              <Textarea {...register("mailing_address")} rows={2} />
             </FormField>
-            <FormField label="ชื่อผู้จำหน่าย" required error={errors.name?.message}>
-              <Input {...register("name")} />
-            </FormField>
-            <FormField label="รหัสบัญชีที่มักใช้" error={errors.account_code_hint?.message}>
-              <Input {...register("account_code_hint")} />
-            </FormField>
-            <FormField label="วิธีการชำระเงิน" error={errors.payment_method?.message}>
-              <Controller
-                control={control}
-                name="payment_method"
-                render={({ field }) => (
-                  <Select value={field.value ?? undefined} onValueChange={(v) => field.onChange(v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="เลือกวิธีการชำระเงิน" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="สด">สด</SelectItem>
-                      <SelectItem value="โอน">โอน</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </FormField>
-            <FormField label="อัตราหัก ณ ที่จ่าย (%) เริ่มต้น" error={errors.default_wht_pct?.message}>
-              <Input type="number" step="0.01" {...register("default_wht_pct")} />
-            </FormField>
-            <FormField label="หมวดหัก ณ ที่จ่ายเริ่มต้น" error={errors.default_wht_category?.message}>
-              <Input {...register("default_wht_category")} />
-            </FormField>
-            <FormField label="ชื่อในใบหัก ณ ที่จ่าย" error={errors.wht_certificate_name?.message}>
-              <Input {...register("wht_certificate_name")} />
-            </FormField>
-            <FormField label="เลขบัญชีธนาคาร" error={errors.bank_account?.message}>
-              <Input {...register("bank_account")} />
-            </FormField>
-            <FormField label="แหล่งที่มาเอกสาร" error={errors.document_source?.message}>
-              <Input {...register("document_source")} />
-            </FormField>
-            <FormField label="ข้อมูลติดต่อ" error={errors.contact_info?.message}>
-              <Input {...register("contact_info")} />
-            </FormField>
-            <FormField label="ประเภทงาน" error={errors.work_type?.message}>
-              <Input {...register("work_type")} placeholder="ขาย/ซ่อม/บริการ/รถร่วม" />
-            </FormField>
-            <FormField label="วิธีจัดส่ง" error={errors.delivery_method?.message}>
-              <Input {...register("delivery_method")} />
-            </FormField>
-            <FormField label="เลขประจำตัวผู้เสียภาษี" error={errors.tax_id?.message}>
-              <Input {...register("tax_id")} />
-            </FormField>
-          </div>
-          <FormField label="ที่อยู่จัดส่งเอกสาร" error={errors.mailing_address?.message}>
-            <Textarea {...register("mailing_address")} rows={2} />
-          </FormField>
-          <DialogFooter>
+          </DrawerBody>
+          <DrawerFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               บันทึก
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

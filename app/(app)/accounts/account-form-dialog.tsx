@@ -4,12 +4,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerEyebrow,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,31 +62,34 @@ export function AccountFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{account ? "แก้ไขรหัสบัญชี" : "เพิ่มรหัสบัญชี"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField label="รหัสบัญชี" required error={errors.code?.message}>
-            <Input {...register("code")} placeholder="เช่น 511002" />
-          </FormField>
-          <FormField label="ชื่อบัญชี" required error={errors.name?.message}>
-            <Input {...register("name")} />
-          </FormField>
-          <FormField label="หมายเหตุ (legacy)" error={errors.legacy_note?.message}>
-            <Textarea {...register("legacy_note")} rows={2} />
-          </FormField>
-          <DialogFooter>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <DrawerHeader>
+            <DrawerEyebrow>ข้อมูล MASTER</DrawerEyebrow>
+            <DrawerTitle>{account ? "แก้ไขรหัสบัญชี" : "เพิ่มรหัสบัญชี"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-4">
+            <FormField label="รหัสบัญชี" required error={errors.code?.message}>
+              <Input {...register("code")} placeholder="เช่น 511002" />
+            </FormField>
+            <FormField label="ชื่อบัญชี" required error={errors.name?.message}>
+              <Input {...register("name")} />
+            </FormField>
+            <FormField label="หมายเหตุ (legacy)" error={errors.legacy_note?.message}>
+              <Textarea {...register("legacy_note")} rows={2} />
+            </FormField>
+          </DrawerBody>
+          <DrawerFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               บันทึก
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }

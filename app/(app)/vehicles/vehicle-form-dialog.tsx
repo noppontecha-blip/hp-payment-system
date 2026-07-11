@@ -4,12 +4,14 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerEyebrow,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -86,12 +88,14 @@ export function VehicleFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{vehicle ? "แก้ไขรถ/เครน" : "เพิ่มรถ/เครน"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <DrawerHeader>
+            <DrawerEyebrow>ข้อมูล MASTER</DrawerEyebrow>
+            <DrawerTitle>{vehicle ? "แก้ไขรถ/เครน" : "เพิ่มรถ/เครน"}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="รหัสรถ/เครน" required error={errors.code?.message}>
               <Input {...register("code")} placeholder="เช่น C04" />
@@ -134,16 +138,17 @@ export function VehicleFormDialog({
               <Input {...register("serial_number")} />
             </FormField>
           </div>
-          <DialogFooter>
+          </DrawerBody>
+          <DrawerFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               บันทึก
             </Button>
-          </DialogFooter>
+          </DrawerFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
