@@ -1,17 +1,19 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "success" | "warning";
+type Tone = "success" | "info" | "warn" | "danger";
 
 const toneClasses: Record<Tone, string> = {
-  success: "bg-success text-success-foreground",
-  warning: "bg-warning text-warning-foreground",
+  success: "bg-success-bg text-success",
+  info: "bg-info-bg text-info",
+  warn: "bg-warn-bg text-warn",
+  danger: "bg-danger-bg text-danger",
 };
 
 export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-[11px] py-[3px] text-[11.5px] font-bold",
         toneClasses[tone],
       )}
     >
@@ -21,5 +23,5 @@ export function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
 }
 
 export function docStatusTone(status: string): Tone {
-  return status === "ครบถ้วน" ? "success" : "warning";
+  return status === "ครบถ้วน" ? "success" : "warn";
 }

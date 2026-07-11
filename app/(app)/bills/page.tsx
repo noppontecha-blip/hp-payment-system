@@ -11,7 +11,12 @@ export default async function BillsPage() {
 
   return (
     <>
-      <Header title="รายการบิลจ่าย HP" subtitle="รายการย่อยทั้งหมดของบิลจ่าย HP" />
+      <Header
+        eyebrow="บิลจ่าย HP"
+        title="รายการบิลจ่าย HP"
+        subtitle="รายการย่อยทั้งหมดของบิลจ่าย HP"
+        metaChip={`ทั้งหมด ${lines?.length ?? 0} รายการ`}
+      />
       <BillsClient lines={lines ?? []} vendors={vendors ?? []} />
     </>
   );

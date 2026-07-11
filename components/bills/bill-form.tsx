@@ -170,11 +170,11 @@ export function BillForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(() => {})} className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[1fr_320px]">
+    <form onSubmit={handleSubmit(() => {})} className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
         {/* Header card */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-navy-text">ข้อมูลหัวบิล</p>
+          <p className="text-sm font-medium text-ink">ข้อมูลหัวบิล</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="เลข HP">
               <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export function BillForm({
         {/* Line items */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-navy-text">รายการย่อย</p>
+            <p className="text-sm font-medium text-ink">รายการย่อย</p>
             <Button type="button" variant="outline" size="sm" onClick={() => append(emptyLine())}>
               <Plus className="size-4" />
               เพิ่มรายการ
@@ -280,7 +280,7 @@ export function BillForm({
 
         {/* Payment section */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-navy-text">การจ่ายเงิน</p>
+          <p className="text-sm font-medium text-ink">การจ่ายเงิน</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="บัญชีที่จ่าย">
               <Input {...register("payment_account")} />

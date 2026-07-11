@@ -8,7 +8,12 @@ export default async function WhtCategoriesPage() {
 
   return (
     <>
-      <Header title="หมวดหัก ณ ที่จ่าย" subtitle="หมวดและอัตราหัก ณ ที่จ่ายมาตรฐานสำหรับใช้ในบิลจ่าย HP" />
+      <Header
+        eyebrow="ข้อมูล MASTER"
+        title="หมวดหัก ณ ที่จ่าย"
+        subtitle="หมวดและอัตราหัก ณ ที่จ่ายมาตรฐานสำหรับใช้ในบิลจ่าย HP"
+        metaChip={`ทั้งหมด ${categories?.length ?? 0} หมวด`}
+      />
       <WhtCategoriesClient categories={categories ?? []} />
     </>
   );

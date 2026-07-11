@@ -8,7 +8,12 @@ export default async function AccountsPage() {
 
   return (
     <>
-      <Header title="ผังบัญชี" subtitle="รหัสบัญชีสำหรับจัดหมวดรายการบิลจ่าย HP" />
+      <Header
+        eyebrow="ข้อมูล MASTER"
+        title="ผังบัญชี"
+        subtitle="รหัสบัญชีสำหรับจัดหมวดรายการบิลจ่าย HP"
+        metaChip={`ทั้งหมด ${accounts?.length ?? 0} รหัส`}
+      />
       <AccountsClient accounts={accounts ?? []} />
     </>
   );

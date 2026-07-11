@@ -16,11 +16,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
       <div className="w-full max-w-sm space-y-6 rounded-xl border border-border bg-card p-8 shadow-sm">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-12 items-center justify-center rounded-lg bg-amber">
+          <div className="flex size-12 items-center justify-center rounded-lg bg-navy">
             <HardHat className="size-6 text-white" />
           </div>
           <div>
-            <p className="text-lg font-bold text-navy-text">SPK Crane</p>
+            <p className="text-lg font-bold text-ink">SPK Crane</p>
             <p className="text-sm text-muted-foreground">ระบบบัญชีคุมบิลจ่าย HP</p>
           </div>
         </div>

@@ -44,19 +44,19 @@ export function WhtTrackingClient({ lines }: { lines: Line[] }) {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 p-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="รอออกหนังสือ"
           value={`${pending.length} รายการ`}
           icon={<Clock className="size-4" />}
-          accent="amber"
+          accent="warn"
         />
         <KpiCard
           label="มูลค่ารวมที่รอออก"
           value={formatCurrency(pendingTotal)}
           icon={<Wallet className="size-4" />}
-          accent="amber"
+          accent="warn"
         />
         <KpiCard
           label="ออกแล้ว"
@@ -70,7 +70,7 @@ export function WhtTrackingClient({ lines }: { lines: Line[] }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
                 <TableHead>เลข HP</TableHead>
                 <TableHead>วันที่</TableHead>
                 <TableHead>ผู้จำหน่าย</TableHead>
@@ -90,18 +90,18 @@ export function WhtTrackingClient({ lines }: { lines: Line[] }) {
                 </TableRow>
               )}
               {lines.map((line) => (
-                <TableRow key={line.id} className={!line.wht_issue_date ? "bg-amber/5" : undefined}>
-                  <TableCell className="font-medium">{line.hp_number}</TableCell>
-                  <TableCell>{formatThaiDate(line.transaction_date)}</TableCell>
+                <TableRow key={line.id} className={!line.wht_issue_date ? "bg-warn-bg/40" : undefined}>
+                  <TableCell className="font-mono font-medium">{line.hp_number}</TableCell>
+                  <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
                   <TableCell>{line.vendor_name_snapshot}</TableCell>
                   <TableCell className="max-w-56 truncate">{line.description}</TableCell>
                   <TableCell>{line.wht_payee_name || line.vendor_name_snapshot}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(line.wht_amount ?? 0)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(line.wht_amount ?? 0)}</TableCell>
                   <TableCell>
                     {line.wht_issue_date ? (
                       <StatusBadge label={`ออกแล้ว ${formatThaiDate(line.wht_issue_date)}`} tone="success" />
                     ) : (
-                      <StatusBadge label="รอออกหนังสือ" tone="warning" />
+                      <StatusBadge label="รอออกหนังสือ" tone="warn" />
                     )}
                   </TableCell>
                   <TableCell className="text-right">

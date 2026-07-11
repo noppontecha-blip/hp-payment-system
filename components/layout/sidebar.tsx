@@ -11,7 +11,6 @@ import {
   Truck,
   BookOpenText,
   Percent,
-  HardHat,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,7 @@ function NavGroup({
 }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 text-xs font-medium tracking-wide text-white/40">{title}</p>
+      <p className="px-3 text-[10px] font-bold tracking-[0.1em] text-muted-2 uppercase">{title}</p>
       {items.map((item) => {
         const active =
           item.href === "/bills"
@@ -54,11 +53,11 @@ function NavGroup({
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-md border-l-4 border-transparent px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white",
-              active && "border-l-amber bg-white/10 font-medium text-amber",
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13.5px] font-medium text-[#3D4757] transition-colors hover:bg-secondary",
+              active && "bg-navy font-semibold text-white hover:bg-navy",
             )}
           >
-            <Icon className="size-4 shrink-0" />
+            <Icon className="size-[17px] shrink-0" strokeWidth={1.8} />
             {item.label}
           </Link>
         );
@@ -67,31 +66,40 @@ function NavGroup({
   );
 }
 
-export function Sidebar({ userEmail }: { userEmail?: string | null }) {
+export function Sidebar({
+  userEmail,
+  lastUpdatedDate,
+  lastUpdatedTime,
+}: {
+  userEmail?: string | null;
+  lastUpdatedDate: string;
+  lastUpdatedTime: string;
+}) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col bg-navy">
-      <div className="flex items-center gap-3 px-5 py-6">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-amber">
-          <HardHat className="size-5 text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-white">SPK Crane</p>
-          <p className="text-xs text-white/40">ระบบบัญชีคุมบิลจ่าย HP</p>
-        </div>
+    <aside className="flex h-full w-[216px] shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="px-5 py-6">
+        <p className="text-[21px] font-bold text-ink">SPK Crane</p>
+        <p className="text-xs text-muted-foreground">ระบบบัญชีคุมบิลจ่าย HP</p>
       </div>
-      <nav className="flex flex-1 flex-col gap-6 px-3 pb-6">
+      <nav className="flex flex-1 flex-col gap-6 px-3">
         <NavGroup title="เมนูหลัก" items={mainMenu} pathname={pathname} />
         <NavGroup title="ข้อมูล MASTER" items={masterMenu} pathname={pathname} />
       </nav>
-      <form action={signOut} className="border-t border-white/10 p-3">
-        {userEmail && <p className="truncate px-3 pb-2 text-xs text-white/40">{userEmail}</p>}
+      <div className="mx-3 mb-3 rounded-lg border border-border p-3">
+        <p className="text-[11px] text-muted-foreground">อัปเดตข้อมูล ณ</p>
+        <p className="font-mono text-xs font-medium text-navy">
+          {lastUpdatedDate} {lastUpdatedTime} น.
+        </p>
+      </div>
+      <form action={signOut} className="border-t border-border p-3">
+        {userEmail && <p className="truncate px-3 pb-2 text-xs text-muted-2">{userEmail}</p>}
         <button
           type="submit"
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+          className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13.5px] font-medium text-[#3D4757] transition-colors hover:bg-secondary"
         >
-          <LogOut className="size-4 shrink-0" />
+          <LogOut className="size-[17px] shrink-0" strokeWidth={1.8} />
           ออกจากระบบ
         </button>
       </form>

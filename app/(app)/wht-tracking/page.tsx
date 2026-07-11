@@ -12,7 +12,12 @@ export default async function WhtTrackingPage() {
 
   return (
     <>
-      <Header title="ติดตามใบหัก ณ ที่จ่าย" subtitle="รายการที่ต้องหัก ณ ที่จ่ายและสถานะการออกหนังสือ" />
+      <Header
+        eyebrow="บิลจ่าย HP"
+        title="ติดตามใบหัก ณ ที่จ่าย"
+        subtitle="รายการที่ต้องหัก ณ ที่จ่ายและสถานะการออกหนังสือ"
+        metaChip={`ทั้งหมด ${lines?.length ?? 0} รายการ`}
+      />
       <WhtTrackingClient lines={lines ?? []} />
     </>
   );

@@ -211,7 +211,7 @@ export function LineItemRow({
         name={`${path}.requires_wht`}
         render={({ field: requiresWht }) =>
           requiresWht.value ? (
-            <div className="grid animate-in fade-in slide-in-from-top-1 grid-cols-1 gap-3 rounded-lg bg-warning/40 p-4 sm:grid-cols-3">
+            <div className="grid animate-in fade-in slide-in-from-top-1 grid-cols-1 gap-3 rounded-lg bg-warn-bg p-4 sm:grid-cols-3">
               <Controller
                 control={control}
                 name={`${path}.wht_category_id`}

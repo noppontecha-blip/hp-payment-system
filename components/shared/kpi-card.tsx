@@ -1,18 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Accent = "amber" | "success" | "info";
-
-const accentBorder: Record<Accent, string> = {
-  amber: "border-l-amber",
-  success: "border-l-[#15803D]",
-  info: "border-l-[#2563EB]",
-};
+type Accent = "success" | "danger" | "warn" | "info";
 
 const accentIconBg: Record<Accent, string> = {
-  amber: "bg-amber/15 text-amber",
-  success: "bg-success text-success-foreground",
-  info: "bg-[#DBEAFE] text-[#2563EB]",
+  success: "bg-success-bg text-success",
+  danger: "bg-danger-bg text-danger",
+  warn: "bg-warn-bg text-warn",
+  info: "bg-info-bg text-info",
 };
 
 export function KpiCard({
@@ -29,24 +24,19 @@ export function KpiCard({
   trend?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "relative rounded-xl border border-border bg-card p-5 shadow-sm border-l-4",
-        accentBorder[accent],
-      )}
-    >
+    <div className="rounded-lg border border-border bg-card p-3.5 shadow-[0_1px_2px_rgba(20,25,40,.03)]">
       {icon && (
         <div
           className={cn(
-            "absolute right-4 top-4 flex size-9 items-center justify-center rounded-lg",
+            "flex size-[30px] items-center justify-center rounded-full",
             accentIconBg[accent],
           )}
         >
           {icon}
         </div>
       )}
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-navy-text">{value}</p>
+      <p className="mt-2.5 text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold text-ink">{value}</p>
       {trend && <p className="mt-1 text-xs text-muted-foreground">{trend}</p>}
     </div>
   );

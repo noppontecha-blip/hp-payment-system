@@ -29,6 +29,7 @@ export function WhtCategoriesClient({ categories }: { categories: WhtCategory[] 
       key: "default_rate_pct",
       header: "อัตราเริ่มต้น",
       align: "right",
+      numeric: true,
       render: (c) => (c.default_rate_pct != null ? `${c.default_rate_pct}%` : "-"),
     },
     { key: "reference_note", header: "หมายเหตุ", render: (c) => c.reference_note ?? "-" },
@@ -45,7 +46,7 @@ export function WhtCategoriesClient({ categories }: { categories: WhtCategory[] 
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-5">
       <div className="flex items-center justify-between gap-4">
         <div className="relative w-72">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

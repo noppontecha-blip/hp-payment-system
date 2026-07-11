@@ -42,7 +42,7 @@ export function AccountsClient({ accounts }: { accounts: Account[] }) {
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-5">
       <div className="flex items-center justify-between gap-4">
         <div className="relative w-72">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

@@ -6,7 +6,7 @@ export function CategoryTag({ label, className }: { label: string; className?: s
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border border-navy-text/30 px-2.5 py-0.5 text-xs font-medium text-navy-text",
+        "inline-flex items-center rounded-full border border-ink/25 px-2.5 py-0.5 text-xs font-medium text-ink",
         className,
       )}
     >

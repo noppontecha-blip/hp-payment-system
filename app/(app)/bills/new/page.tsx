@@ -18,7 +18,7 @@ export default async function NewBillPage() {
 
   return (
     <>
-      <Header title="สร้างบิลจ่าย HP" subtitle={`เลข HP: ${hpNumber}`} />
+      <Header eyebrow="บิลจ่าย HP" title="สร้างบิลจ่าย HP" metaChip={`เลข HP: ${hpNumber}`} />
       <BillForm
         mode="create"
         hpNumber={hpNumber}

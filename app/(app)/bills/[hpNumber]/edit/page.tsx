@@ -66,7 +66,7 @@ export default async function EditBillPage({
 
   return (
     <>
-      <Header title="แก้ไขบิลจ่าย HP" subtitle={`เลข HP: ${hpNumber}`} />
+      <Header eyebrow="บิลจ่าย HP" title="แก้ไขบิลจ่าย HP" metaChip={`เลข HP: ${hpNumber}`} />
       <BillForm
         mode="edit"
         hpNumber={hpNumber}

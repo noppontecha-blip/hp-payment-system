@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Download, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { StatusBadge, docStatusTone } from "@/components/shared/status-badge";
 import { CategoryTag } from "@/components/shared/category-tag";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate } from "@/lib/utils/thai-date";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/types/database";
 
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
@@ -33,6 +35,7 @@ type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
 const ALL = "__all__";
 
 export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -159,11 +162,11 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
                 <TableHead>เลข HP</TableHead>
                 <TableHead>วันที่</TableHead>
                 <TableHead>ผู้จำหน่าย</TableHead>
@@ -179,7 +182,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="py-8 text-center text-muted-2">
                     ไม่พบรายการที่ตรงกับเงื่อนไข
                   </TableCell>
                 </TableRow>
@@ -187,29 +190,33 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
               {filtered.map((line) => (
                 <TableRow
                   key={line.id}
-                  className={
-                    line.accounting_office_doc_status === "รอเอกสารจากสนง.บัญชี"
-                      ? "bg-amber/5"
-                      : undefined
-                  }
+                  onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
+                  className={cn(
+                    "cursor-pointer hover:bg-[#F5F7FB]",
+                    line.accounting_office_doc_status === "รอเอกสารจากสนง.บัญชี" && "bg-warn-bg/40",
+                  )}
                 >
+                  <TableCell className="font-mono">{line.hp_number}</TableCell>
+                  <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
                   <TableCell>
-                    <Link href={`/bills/${line.hp_number}/edit`} className="font-medium text-amber hover:underline">
-                      {line.hp_number}
+                    <Link
+                      href={`/bills/${line.hp_number}/edit`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-medium text-navy underline decoration-navy/30 underline-offset-2"
+                    >
+                      {line.vendor_name_snapshot}
                     </Link>
                   </TableCell>
-                  <TableCell>{formatThaiDate(line.transaction_date)}</TableCell>
-                  <TableCell>{line.vendor_name_snapshot}</TableCell>
                   <TableCell className="max-w-64 truncate">{line.description}</TableCell>
                   <TableCell>
                     <CategoryTag label={line.work_type} />
                   </TableCell>
-                  <TableCell className="text-right">{formatCurrency(line.amount_before_vat)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(line.vat_amount)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right font-mono">{formatCurrency(line.amount_before_vat)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(line.vat_amount)}</TableCell>
+                  <TableCell className="text-right font-mono">
                     {line.requires_wht ? formatCurrency(line.wht_amount ?? 0) : "-"}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-mono font-medium">
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>

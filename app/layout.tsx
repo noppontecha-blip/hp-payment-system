@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
-import { Kanit } from "next/font/google";
+import { Noto_Sans_Thai, Inter, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const kanit = Kanit({
-  variable: "--font-kanit",
-  subsets: ["latin", "thai"],
-  weight: ["300", "400", "500", "600", "700"],
+const notoSansThai = Noto_Sans_Thai({
+  variable: "--font-noto-sans-thai",
+  subsets: ["thai", "latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -20,7 +32,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${kanit.variable} h-full antialiased`}>
+    <html
+      lang="th"
+      className={`${notoSansThai.variable} ${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster />

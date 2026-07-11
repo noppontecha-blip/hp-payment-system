@@ -8,7 +8,12 @@ export default async function VendorsPage() {
 
   return (
     <>
-      <Header title="ผู้จำหน่าย" subtitle="ข้อมูลหลักผู้จำหน่ายสำหรับใช้ในบิลจ่าย HP" />
+      <Header
+        eyebrow="ข้อมูล MASTER"
+        title="ผู้จำหน่าย"
+        subtitle="ข้อมูลหลักผู้จำหน่ายสำหรับใช้ในบิลจ่าย HP"
+        metaChip={`ทั้งหมด ${vendors?.length ?? 0} ราย`}
+      />
       <VendorsClient vendors={vendors ?? []} />
     </>
   );

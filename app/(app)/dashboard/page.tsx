@@ -81,7 +81,13 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" subtitle="ภาพรวมบิลจ่าย HP" hasNotification={pendingWhtCount > 0} />
+      <Header
+        eyebrow="ภาพรวม"
+        title="Dashboard"
+        subtitle="ภาพรวมบิลจ่าย HP"
+        metaChip={`บิลปีนี้ ${billsThisYear} บิล`}
+        hasNotification={pendingWhtCount > 0}
+      />
       <DashboardClient
         billsThisMonth={billsThisMonth}
         billsThisYear={billsThisYear}
