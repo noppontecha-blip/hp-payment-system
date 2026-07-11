@@ -53,7 +53,7 @@ function NavGroup({
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13.5px] font-medium text-[#3D4757] transition-colors hover:bg-secondary",
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-[#3D4757] transition-colors hover:bg-secondary",
               active && "bg-navy font-semibold text-white hover:bg-navy",
             )}
           >
