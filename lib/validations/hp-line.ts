@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+// One vehicle's cost within a line's multi-vehicle breakdown table. UI-only — never sent to the
+// server as-is; bill-form.tsx expands each row into its own hp_payment_lines record on save
+// (spec 4.4's "แยกบันทึกเป็นหลายแถว 1 แถวต่อ 1 คัน", but without re-keying shared fields per row).
+const vehicleBreakdownRow = z.object({
+  vehicle_id: z.string().uuid().nullable(),
+  amount: z.coerce.number().min(0),
+});
+
 // One row of the editable line-items table (7.3). WHT fields live per-line because
 // hp_payment_lines stores them per row — a single HP bill can mix WHT and non-WHT lines.
 const hpLineItemBase = z.object({
@@ -8,6 +16,7 @@ const hpLineItemBase = z.object({
   account_code_id: z.string().uuid().nullable().optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
   related_vehicles_text: z.string().nullable().optional(),
+  vehicleBreakdown: z.array(vehicleBreakdownRow).optional(),
   amount_before_vat: z.coerce.number().min(0),
   vat_amount: z.coerce.number().min(0),
   requires_wht: z.boolean().default(false),

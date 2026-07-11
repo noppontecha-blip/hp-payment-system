@@ -41,6 +41,7 @@ function emptyLine(): HpBillFormValues["lines"][number] {
     account_code_id: null,
     vehicle_id: null,
     related_vehicles_text: "",
+    vehicleBreakdown: [],
     amount_before_vat: 0,
     vat_amount: 0,
     requires_wht: false,
@@ -50,6 +51,47 @@ function emptyLine(): HpBillFormValues["lines"][number] {
     wht_amount: null,
     net_paid_amount: 0,
   };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// A line with a multi-vehicle breakdown table is one form "card" but becomes N real
+// hp_payment_lines rows on save — one per vehicle, each with VAT/WHT computed on its own
+// amount. Only the first row keeps the original line's id (update-in-place); the rest are
+// new inserts. This is what lets the user fill shared fields (description, account, WHT) once
+// instead of re-keying them for every vehicle.
+function expandVehicleBreakdown(lines: HpBillFormValues["lines"]): HpBillFormValues["lines"] {
+  const expanded: HpBillFormValues["lines"] = [];
+  for (const line of lines) {
+    const breakdown = line.vehicleBreakdown ?? [];
+    const base = { ...line };
+    delete base.vehicleBreakdown;
+    if (breakdown.length === 0) {
+      expanded.push(base);
+      continue;
+    }
+    const vatEnabled = (line.vat_amount ?? 0) > 0;
+    breakdown.forEach((row, i) => {
+      const amount = row.amount || 0;
+      const vat = vatEnabled ? round2(amount * 0.07) : 0;
+      const wht =
+        line.requires_wht && line.wht_rate_pct != null
+          ? round2(amount * (line.wht_rate_pct / 100))
+          : 0;
+      expanded.push({
+        ...base,
+        id: i === 0 ? base.id : undefined,
+        vehicle_id: row.vehicle_id,
+        amount_before_vat: amount,
+        vat_amount: vat,
+        wht_amount: line.requires_wht ? wht : null,
+        net_paid_amount: round2(amount + vat - wht),
+      });
+    });
+  }
+  return expanded;
 }
 
 export function BillForm({
@@ -134,7 +176,8 @@ export function BillForm({
   }
 
   function onSave(saveMode: "draft" | "final") {
-    const values = getValues();
+    const rawValues = getValues();
+    const values = { ...rawValues, lines: expandVehicleBreakdown(rawValues.lines) };
     const schema = saveMode === "final" ? hpBillFinalSchema : hpBillDraftSchema;
     const parsed = schema.safeParse(values);
     if (!parsed.success) {
@@ -257,8 +300,8 @@ export function BillForm({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            ถ้ารายการนี้เกี่ยวข้องกับรถ/เครนมากกว่า 1 คัน และต้องการต้นทุนต่อคันที่แม่นยำ
-            แนะนำให้แยกบันทึกเป็นหลายแถว (1 แถวต่อ 1 คัน) แทนการกรอกหลายคันในแถวเดียว — ใช้เลข HP ซ้ำกันได้
+            ถ้ารายการนี้เกี่ยวข้องกับรถ/เครนมากกว่า 1 คัน กด &quot;แยกยอดตามรถหลายคัน&quot; ในแต่ละแถว
+            เพื่อกรอกยอดต่อคันโดยไม่ต้องกรอกรายละเอียด/รหัสบัญชีซ้ำ — ระบบจะบันทึกเป็นคนละแถวต่อคันให้อัตโนมัติ
           </p>
           <div className="space-y-4">
             {fields.map((field, index) => (

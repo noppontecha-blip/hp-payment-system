@@ -3,12 +3,13 @@
 import { useState } from "react";
 import {
   Controller,
+  useFieldArray,
   useWatch,
   type Control,
   type UseFormSetValue,
   type UseFormGetValues,
 } from "react-hook-form";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -68,11 +69,56 @@ export function LineItemRow({
 
   const vatAmount = useWatch({ control, name: `${path}.vat_amount` });
 
+  const {
+    fields: breakdownFields,
+    append: appendBreakdown,
+    remove: removeBreakdown,
+  } = useFieldArray({ control, name: `${path}.vehicleBreakdown` });
+  const isMultiVehicle = breakdownFields.length > 0;
+
   function recomputeNet() {
     const line = getValues(`lines.${index}`);
     const wht = line.requires_wht ? line.wht_amount ?? 0 : 0;
     const net = round2((line.amount_before_vat || 0) + (line.vat_amount || 0) - wht);
     setValue(`lines.${index}.net_paid_amount`, net);
+  }
+
+  function applyAmountChange(newAmount: number) {
+    setValue(`${path}.amount_before_vat`, newAmount);
+    if (vatEnabled) {
+      setValue(`${path}.vat_amount`, round2(newAmount * 0.07));
+    }
+    recomputeNet();
+  }
+
+  function enableMultiVehicle() {
+    const currentVehicle = getValues(`${path}.vehicle_id`);
+    const currentAmount = getValues(`${path}.amount_before_vat`) || 0;
+    appendBreakdown({ vehicle_id: currentVehicle ?? null, amount: currentAmount });
+    setValue(`${path}.vehicle_id`, null);
+  }
+
+  function disableMultiVehicle() {
+    const count = getValues(`${path}.vehicleBreakdown`)?.length ?? 0;
+    for (let i = count - 1; i >= 0; i--) removeBreakdown(i);
+  }
+
+  function handleAddBreakdownRow() {
+    appendBreakdown({ vehicle_id: null, amount: 0 });
+  }
+
+  function handleRemoveBreakdownRow(i: number) {
+    const row = getValues(`${path}.vehicleBreakdown.${i}`);
+    removeBreakdown(i);
+    const current = getValues(`${path}.amount_before_vat`) || 0;
+    applyAmountChange(round2(current - (row?.amount || 0)));
+  }
+
+  function handleBreakdownAmountChange(i: number, value: number) {
+    const previous = getValues(`${path}.vehicleBreakdown.${i}.amount`) || 0;
+    setValue(`${path}.vehicleBreakdown.${i}.amount`, value);
+    const current = getValues(`${path}.amount_before_vat`) || 0;
+    applyAmountChange(round2(current - previous + value));
   }
 
   return (
@@ -120,78 +166,140 @@ export function LineItemRow({
             )}
           />
 
-          <Controller
-            control={control}
-            name={`${path}.vehicle_id`}
-            render={({ field }) => (
-              <FormField label="รหัสรถ/เครน">
-                <Select
-                  value={field.value ?? NONE}
-                  onValueChange={(v) => {
-                    field.onChange(v === NONE ? null : v);
-                    if (v !== NONE) setValue(`${path}.related_vehicles_text`, "");
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="เลือกรถ/เครน (คันเดียว)">
-                      {(value: string) => {
-                        if (value === NONE) return "ไม่ระบุ";
-                        const vehicle = vehicles.find((v) => v.id === value);
-                        return vehicle
-                          ? `${vehicle.code}${vehicle.nickname ? ` (${vehicle.nickname})` : ""}`
-                          : undefined;
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
-                    {vehicles.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.code} {v.nickname ? `(${v.nickname})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            )}
-          />
+          {!isMultiVehicle && (
+            <Controller
+              control={control}
+              name={`${path}.vehicle_id`}
+              render={({ field }) => (
+                <FormField label="รหัสรถ/เครน">
+                  <Select
+                    value={field.value ?? NONE}
+                    onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="เลือกรถ/เครน">
+                        {(value: string) => {
+                          if (value === NONE) return "ไม่ระบุ";
+                          const vehicle = vehicles.find((v) => v.id === value);
+                          return vehicle
+                            ? `${vehicle.code}${vehicle.nickname ? ` (${vehicle.nickname})` : ""}`
+                            : undefined;
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
+                      {vehicles.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.code} {v.nickname ? `(${v.nickname})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+            />
+          )}
 
-          <Controller
-            control={control}
-            name={`${path}.related_vehicles_text`}
-            render={({ field }) => (
-              <FormField label="รถหลายคัน (ถ้ามี, คั่นด้วยลูกน้ำ)">
-                <Input
-                  {...field}
-                  value={field.value ?? ""}
-                  placeholder="เช่น C18, C22, C26"
-                  onChange={(e) => {
-                    field.onChange(e.target.value);
-                    if (e.target.value) setValue(`${path}.vehicle_id`, null);
-                  }}
-                />
-              </FormField>
-            )}
-          />
+          {!isMultiVehicle && (
+            <Controller
+              control={control}
+              name={`${path}.amount_before_vat`}
+              render={({ field }) => (
+                <FormField label="ก่อน VAT">
+                  <CurrencyInput value={field.value} onChange={(v) => applyAmountChange(v)} />
+                </FormField>
+              )}
+            />
+          )}
 
-          <Controller
-            control={control}
-            name={`${path}.amount_before_vat`}
-            render={({ field }) => (
-              <FormField label="ก่อน VAT">
-                <CurrencyInput
-                  value={field.value}
-                  onChange={(v) => {
-                    field.onChange(v);
-                    if (vatEnabled) {
-                      setValue(`${path}.vat_amount`, round2(v * 0.07));
-                    }
-                    recomputeNet();
-                  }}
+          <div className="sm:col-span-2">
+            {!isMultiVehicle ? (
+              <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={enableMultiVehicle}>
+                <Plus className="size-3.5" />
+                แยกยอดตามรถหลายคัน
+              </Button>
+            ) : (
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <Label>รถ/เครนหลายคัน — ยอดต่อคัน</Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={disableMultiVehicle}>
+                    ยกเลิกแยกยอด
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {breakdownFields.map((f, i) => (
+                    <div key={f.id} className="flex items-center gap-2">
+                      <Controller
+                        control={control}
+                        name={`${path}.vehicleBreakdown.${i}.vehicle_id`}
+                        render={({ field }) => (
+                          <Select
+                            value={field.value ?? NONE}
+                            onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="เลือกรถ/เครน">
+                                {(value: string) => {
+                                  if (value === NONE) return "ไม่ระบุ";
+                                  const vehicle = vehicles.find((v) => v.id === value);
+                                  return vehicle
+                                    ? `${vehicle.code}${vehicle.nickname ? ` (${vehicle.nickname})` : ""}`
+                                    : undefined;
+                                }}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NONE}>ไม่ระบุ</SelectItem>
+                              {vehicles.map((v) => (
+                                <SelectItem key={v.id} value={v.id}>
+                                  {v.code} {v.nickname ? `(${v.nickname})` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name={`${path}.vehicleBreakdown.${i}.amount`}
+                        render={({ field }) => (
+                          <CurrencyInput
+                            value={field.value ?? 0}
+                            onChange={(v) => handleBreakdownAmountChange(i, v)}
+                            className="w-36 shrink-0"
+                          />
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleRemoveBreakdownRow(i)}
+                        aria-label="ลบรถคันนี้"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddBreakdownRow}>
+                  <Plus className="size-3.5" />
+                  เพิ่มรถ
+                </Button>
+                <Controller
+                  control={control}
+                  name={`${path}.amount_before_vat`}
+                  render={({ field }) => (
+                    <div className="flex items-center justify-between border-t border-border pt-2 text-sm font-medium text-ink">
+                      <span>รวมก่อน VAT</span>
+                      <span className="font-mono">{formatCurrency(field.value)}</span>
+                    </div>
+                  )}
                 />
-              </FormField>
+              </div>
             )}
-          />
+          </div>
         </div>
         {removable && (
           <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="ลบรายการ">
