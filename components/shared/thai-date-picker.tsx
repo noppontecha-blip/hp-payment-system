@@ -44,7 +44,7 @@ export function ThaiDatePicker({
         }
       >
         <CalendarIcon className="mr-2 size-4" />
-        {value ? formatThaiDate(value) : "เลือกวันที่ (dd/mm/yyyy)"}
+        {value ? formatThaiDate(value) : "dd/mm/yyyy"}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
