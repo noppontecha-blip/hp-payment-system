@@ -1,6 +1,13 @@
 "use client";
 
-import { Controller, type Control, type UseFormSetValue, type UseFormGetValues } from "react-hook-form";
+import { useState } from "react";
+import {
+  Controller,
+  useWatch,
+  type Control,
+  type UseFormSetValue,
+  type UseFormGetValues,
+} from "react-hook-form";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CurrencyInput } from "@/components/shared/currency-input";
 import { FormField } from "@/components/shared/form-field";
+import { formatCurrency } from "@/lib/utils/format";
 import type { HpBillFormValues } from "@/lib/validations/hp-line";
 import type { Database } from "@/lib/types/database";
 
@@ -50,6 +58,15 @@ export function LineItemRow({
   removable: boolean;
 }) {
   const path = `lines.${index}` as const;
+
+  // No DB column for "VAT applies" — inferred client-side: existing lines with a saved VAT
+  // amount keep the toggle on when reopened, new lines default to on (the common case).
+  const [vatEnabled, setVatEnabled] = useState(() => {
+    const line = getValues(`lines.${index}`);
+    return !line.id || (line.vat_amount ?? 0) > 0;
+  });
+
+  const vatAmount = useWatch({ control, name: `${path}.vat_amount` });
 
   function recomputeNet() {
     const line = getValues(`lines.${index}`);
@@ -166,23 +183,9 @@ export function LineItemRow({
                   value={field.value}
                   onChange={(v) => {
                     field.onChange(v);
-                    setValue(`${path}.vat_amount`, round2(v * 0.07));
-                    recomputeNet();
-                  }}
-                />
-              </FormField>
-            )}
-          />
-
-          <Controller
-            control={control}
-            name={`${path}.vat_amount`}
-            render={({ field }) => (
-              <FormField label="VAT 7%">
-                <CurrencyInput
-                  value={field.value}
-                  onChange={(v) => {
-                    field.onChange(v);
+                    if (vatEnabled) {
+                      setValue(`${path}.vat_amount`, round2(v * 0.07));
+                    }
                     recomputeNet();
                   }}
                 />
@@ -196,6 +199,25 @@ export function LineItemRow({
           </Button>
         )}
       </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+        <Label>VAT 7%</Label>
+        <Switch
+          checked={vatEnabled}
+          onCheckedChange={(checked) => {
+            setVatEnabled(checked);
+            const amount = getValues(`${path}.amount_before_vat`);
+            setValue(`${path}.vat_amount`, checked ? round2((amount || 0) * 0.07) : 0);
+            recomputeNet();
+          }}
+        />
+      </div>
+      {vatEnabled && (
+        <div className="flex animate-in fade-in slide-in-from-top-1 items-center justify-between rounded-lg bg-info-bg px-3 py-2 text-sm">
+          <span className="text-muted-foreground">ยอด VAT 7% (คำนวณอัตโนมัติ)</span>
+          <span className="font-mono font-semibold text-info">{formatCurrency(vatAmount)}</span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
         <Label>ต้องหัก ณ ที่จ่าย</Label>
