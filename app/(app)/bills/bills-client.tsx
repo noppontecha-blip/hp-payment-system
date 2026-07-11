@@ -203,7 +203,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                   key={line.id}
                   onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
                   className={cn(
-                    "cursor-pointer hover:bg-[#F5F7FB]",
+                    "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
                     line.accounting_office_doc_status === "รอเอกสารจากสนง.บัญชี" && "bg-warn-bg/40",
                   )}
                 >
@@ -213,12 +213,12 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                     <Link
                       href={`/bills/${line.hp_number}/edit`}
                       onClick={(e) => e.stopPropagation()}
-                      className="font-medium text-navy underline decoration-navy/30 underline-offset-2"
+                      className="font-normal text-navy underline decoration-navy/30 underline-offset-2"
                     >
                       {line.vendor_name_snapshot}
                     </Link>
                   </TableCell>
-                  <TableCell className="max-w-64 truncate text-xs font-normal">{line.description}</TableCell>
+                  <TableCell className="max-w-64 truncate">{line.description}</TableCell>
                   <TableCell>
                     <CategoryTag label={line.work_type} />
                   </TableCell>
@@ -227,7 +227,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                   <TableCell className="text-right font-mono">
                     {line.requires_wht ? formatCurrency(line.wht_amount ?? 0) : "-"}
                   </TableCell>
-                  <TableCell className="text-right font-mono font-medium">
+                  <TableCell className="text-right font-mono">
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>
