@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -70,6 +72,13 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
     { beforeVat: 0, vat: 0, total: 0 },
   );
 
+  function handleExport() {
+    const params = new URLSearchParams();
+    if (year !== ALL) params.set("year", year);
+    if (month !== ALL) params.set("month", month);
+    window.location.href = `/api/tax-report/export?${params.toString()}`;
+  }
+
   return (
     <div className="space-y-4 p-5">
       <div className="flex flex-wrap items-end gap-3">
@@ -107,6 +116,10 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
             </SelectContent>
           </Select>
         </FilterField>
+        <Button variant="outline" className="ml-auto" onClick={handleExport}>
+          <Download className="size-4" />
+          ส่งออก Excel
+        </Button>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">

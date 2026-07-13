@@ -45,3 +45,7 @@ supabase/.temp/
 
 .vercel
 .env*
+
+# one-off data migration dumps (regenerable, may contain business data)
+scripts/*.json
+scripts/*-report.txt
