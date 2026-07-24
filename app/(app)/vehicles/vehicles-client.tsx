@@ -24,21 +24,21 @@ export function VehiclesClient({ vehicles }: { vehicles: Vehicle[] }) {
     return vehicles.filter(
       (v) =>
         v.code.toLowerCase().includes(q) ||
-        (v.nickname ?? "").toLowerCase().includes(q) ||
+        (v.short_name ?? "").toLowerCase().includes(q) ||
         (v.plate_number ?? "").toLowerCase().includes(q),
     );
   }, [vehicles, search]);
 
   const columns: Column<Vehicle>[] = [
     { key: "code", header: "รหัส", render: (v) => v.code },
-    { key: "nickname", header: "ชื่อเล่น", render: (v) => v.nickname ?? "-" },
+    { key: "short_name", header: "ชื่อย่อ", render: (v) => v.short_name ?? "-" },
+    {
+      key: "vehicle_type",
+      header: "ประเภทรถ",
+      render: (v) => (v.vehicle_type ? <CategoryTag label={v.vehicle_type} /> : "-"),
+    },
     { key: "size", header: "ขนาด", render: (v) => v.size ?? "-" },
     { key: "plate_number", header: "ทะเบียน", render: (v) => v.plate_number ?? "-" },
-    {
-      key: "vat_eligible",
-      header: "VAT",
-      render: (v) => <CategoryTag label={v.vat_eligible ? "เข้าเกณฑ์ VAT" : "ไม่เข้าเกณฑ์"} />,
-    },
   ];
 
   async function handleDelete(vehicle: Vehicle) {

@@ -12,8 +12,8 @@ export default async function DocumentTrackingPage() {
   return (
     <>
       <Header
-        eyebrow="บิลจ่าย HP"
-        title="ติดตามเอกสารซื้อ (ใบกำกับภาษี/บิลเงินสด)"
+        eyebrow="รายจ่าย"
+        title="สถานะเอกสารซื้อ (ใบกำกับภาษี/บิลเงินสด)"
         subtitle="รายการ HP ที่ยังตามเอกสารจากผู้จำหน่ายไม่ครบ"
         metaChip={`ทั้งหมด ${lines?.length ?? 0} รายการ`}
       />

@@ -18,6 +18,8 @@ export default async function EditBillPage({
     { data: vehicles },
     { data: accounts },
     { data: whtCategories },
+    { data: assetCategories },
+    { data: payments },
   ] = await Promise.all([
     supabase
       .from("hp_payment_lines")
@@ -28,6 +30,8 @@ export default async function EditBillPage({
     supabase.from("vehicles").select("*").order("code"),
     supabase.from("chart_of_accounts").select("*").order("code"),
     supabase.from("wht_categories").select("*").order("name"),
+    supabase.from("asset_categories").select("*").order("name"),
+    supabase.from("bill_payments").select("*").eq("hp_number", hpNumber).order("payment_date"),
   ]);
 
   if (!rows || rows.length === 0) notFound();
@@ -45,6 +49,12 @@ export default async function EditBillPage({
     document_invoice_date: first.document_invoice_date,
     payment_method: first.payment_method,
     payment_date: first.payment_date,
+    slip_path: first.slip_path,
+    slip_ocr_amount: first.slip_ocr_amount,
+    slip_ocr_date: first.slip_ocr_date,
+    slip_ocr_bank: first.slip_ocr_bank,
+    slip_ocr_reference: first.slip_ocr_reference,
+    slip_looks_valid: first.slip_looks_valid,
     advance_payer_name: first.advance_payer_name,
     spk_repaid_date: first.spk_repaid_date,
     notes: first.notes,
@@ -54,6 +64,12 @@ export default async function EditBillPage({
       account_code_id: row.account_code_id,
       vehicle_id: row.vehicle_id,
       related_vehicles_text: row.related_vehicles_text,
+      expense_group: row.expense_group,
+      cost_subtype: row.cost_subtype,
+      asset_category_id: row.asset_category_id,
+      asset_useful_life_years: row.asset_useful_life_years,
+      quantity: row.quantity ?? 1,
+      unit_price: row.unit_price ?? row.amount_before_vat,
       amount_before_vat: row.amount_before_vat,
       vat_amount: row.vat_amount,
       requires_wht: row.requires_wht,
@@ -61,13 +77,14 @@ export default async function EditBillPage({
       wht_rate_pct: row.wht_rate_pct,
       wht_payee_name: row.wht_payee_name,
       wht_amount: row.wht_amount,
+      wht_pnd_form: row.wht_pnd_form,
       net_paid_amount: row.net_paid_amount,
     })),
   };
 
   return (
     <>
-      <Header eyebrow="บิลจ่าย HP" title="แก้ไขบิลจ่าย HP" metaChip={`เลข HP: ${hpNumber}`} />
+      <Header eyebrow="รายจ่าย" title="แก้ไขเอกสาร" metaChip={`เลข HP: ${hpNumber}`} />
       <BillForm
         mode="edit"
         hpNumber={hpNumber}
@@ -75,7 +92,11 @@ export default async function EditBillPage({
         vehicles={vehicles ?? []}
         accounts={accounts ?? []}
         whtCategories={whtCategories ?? []}
+        assetCategories={assetCategories ?? []}
         initialValues={initialValues}
+        payments={payments ?? []}
+        initialIsDraft={first.is_draft}
+        initialIsCancelled={first.is_cancelled}
       />
     </>
   );

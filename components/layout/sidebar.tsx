@@ -2,27 +2,30 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   ReceiptText,
-  FilePlus,
   FileCheck2,
   FileSpreadsheet,
   Building2,
   Truck,
   BookOpenText,
   Percent,
+  Layers,
+  Settings,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/actions/auth";
 
+// "รายจ่าย" is the single hub for both browsing and creating bills — category
+// tabs + a create-by-category menu live on that page itself (bills-client.tsx),
+// so the sidebar doesn't need separate "list" vs "record new" entries per category.
 const mainMenu = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/bills", label: "รายการบิล", icon: ReceiptText },
-  { href: "/bills/new", label: "สร้างบิล", icon: FilePlus },
-  { href: "/document-tracking", label: "ติดตามเอกสารซื้อ", icon: FileCheck2 },
+  { href: "/bills", label: "รายจ่าย", icon: ReceiptText },
+  { href: "/document-tracking", label: "สถานะเอกสารซื้อ", icon: FileCheck2 },
   { href: "/tax-report", label: "รายงานภาษีซื้อ", icon: FileSpreadsheet },
 ];
 
@@ -31,25 +34,32 @@ const masterMenu = [
   { href: "/vehicles", label: "รถ-เครน", icon: Truck },
   { href: "/accounts", label: "ผังบัญชี", icon: BookOpenText },
   { href: "/wht-categories", label: "หมวดหัก", icon: Percent },
+  { href: "/asset-categories", label: "หมวดสินทรัพย์", icon: Layers },
+  { href: "/settings", label: "ตั้งค่าบริษัท", icon: Settings },
 ];
 
 function NavGroup({
   title,
   items,
   pathname,
+  searchParams,
 }: {
   title: ReactNode;
   items: typeof mainMenu;
   pathname: string;
+  searchParams: URLSearchParams;
 }) {
   return (
     <div className="space-y-1">
       <p className="px-3 text-[11px] font-bold tracking-[0.1em] text-muted-2 uppercase">{title}</p>
       {items.map((item) => {
+        const [itemPath, itemQuery] = item.href.split("?");
         const active =
-          item.href === "/bills"
+          itemPath === "/bills"
             ? pathname === "/bills"
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            : itemQuery
+              ? pathname === itemPath && searchParams.toString() === itemQuery
+              : pathname === itemPath || pathname.startsWith(`${itemPath}/`);
         const Icon = item.icon;
         return (
           <Link
@@ -79,6 +89,7 @@ export function Sidebar({
   lastUpdatedTime: string;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   return (
     <aside className="flex h-full w-[248px] shrink-0 flex-col border-r border-border bg-sidebar">
@@ -87,7 +98,7 @@ export function Sidebar({
         <p className="text-xs text-muted-foreground">ระบบบัญชีคุมบิลจ่าย HP</p>
       </div>
       <nav className="flex flex-1 flex-col gap-6 px-3">
-        <NavGroup title="เมนูหลัก" items={mainMenu} pathname={pathname} />
+        <NavGroup title="เมนูหลัก" items={mainMenu} pathname={pathname} searchParams={searchParams} />
         <NavGroup
           title={
             <>
@@ -96,6 +107,7 @@ export function Sidebar({
           }
           items={masterMenu}
           pathname={pathname}
+          searchParams={searchParams}
         />
       </nav>
       <div className="mx-3 mb-3 rounded-lg border border-border p-3">

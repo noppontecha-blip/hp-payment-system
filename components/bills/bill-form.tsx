@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller, type Resolver } from "react-hook-fo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, Printer, RefreshCw, Ban, ShieldCheck, ShieldQuestion, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,25 +18,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { FormField } from "@/components/shared/form-field";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { RibbonBadge } from "@/components/shared/ribbon-badge";
+import { FileDropzone } from "@/components/shared/file-dropzone";
 import { VendorCombobox } from "./vendor-combobox";
 import { LineItemRow } from "./line-item-row";
-import { SummarySidebar } from "./summary-sidebar";
+import { SummaryBar } from "./summary-bar";
+import { PaymentHistory } from "./payment-history";
 import {
   hpBillDraftSchema,
   hpBillFinalSchema,
   type HpBillFormValues,
 } from "@/lib/validations/hp-line";
-import { generateHpNumber, saveHpBill, deleteHpBill } from "@/lib/actions/bills";
+import { peekHpNumber, saveHpBill, cancelHpBill } from "@/lib/actions/bills";
+import { deriveDocumentStatus, documentStatusTone } from "@/lib/utils/document-status";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils/format";
-import { toISODateString } from "@/lib/utils/thai-date";
+import { formatThaiDate, toISODateString } from "@/lib/utils/thai-date";
+import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/types/database";
 
 type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
 type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
 type Account = Database["public"]["Tables"]["chart_of_accounts"]["Row"];
 type WhtCategory = Database["public"]["Tables"]["wht_categories"]["Row"];
+type AssetCategory = Database["public"]["Tables"]["asset_categories"]["Row"];
+type BillPayment = Database["public"]["Tables"]["bill_payments"]["Row"];
 
 const NONE = "__none__";
 
@@ -44,12 +60,20 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function emptyLine(): HpBillFormValues["lines"][number] {
+function emptyLine(
+  expenseGroup: HpBillFormValues["lines"][number]["expense_group"] = "ต้นทุนรายคัน",
+): HpBillFormValues["lines"][number] {
   return {
     description: "",
     account_code_id: null,
     vehicle_id: null,
     related_vehicles_text: "",
+    expense_group: expenseGroup,
+    cost_subtype: null,
+    asset_category_id: null,
+    asset_useful_life_years: null,
+    quantity: 1,
+    unit_price: 0,
     amount_before_vat: 0,
     vat_amount: 0,
     requires_wht: false,
@@ -57,6 +81,7 @@ function emptyLine(): HpBillFormValues["lines"][number] {
     wht_rate_pct: null,
     wht_payee_name: "",
     wht_amount: null,
+    wht_pnd_form: null,
     net_paid_amount: 0,
   };
 }
@@ -68,7 +93,12 @@ export function BillForm({
   vehicles,
   accounts,
   whtCategories,
+  assetCategories,
   initialValues,
+  initialExpenseGroup,
+  payments,
+  initialIsDraft = false,
+  initialIsCancelled = false,
 }: {
   mode: "create" | "edit";
   hpNumber: string;
@@ -76,11 +106,18 @@ export function BillForm({
   vehicles: Vehicle[];
   accounts: Account[];
   whtCategories: WhtCategory[];
+  assetCategories: AssetCategory[];
   initialValues?: HpBillFormValues;
+  initialExpenseGroup?: HpBillFormValues["lines"][number]["expense_group"];
+  payments?: BillPayment[];
+  initialIsDraft?: boolean;
+  initialIsCancelled?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [currentHpNumber, setCurrentHpNumber] = useState(hpNumber);
+  const [scanningSlip, setScanningSlip] = useState(false);
+  const isCancelled = initialIsCancelled;
 
   // VAT and หัก ณ ที่จ่าย are one decision for the whole bill (not per line) — reconstructed
   // from the first saved line when editing, since every row is written with the same settings.
@@ -89,7 +126,6 @@ export function BillForm({
   const [requiresWht, setRequiresWht] = useState(() => firstLine?.requires_wht ?? false);
   const [whtCategoryId, setWhtCategoryId] = useState<string | null>(firstLine?.wht_category_id ?? null);
   const [whtRatePct, setWhtRatePct] = useState<number | null>(firstLine?.wht_rate_pct ?? null);
-  const [whtPayeeName, setWhtPayeeName] = useState(firstLine?.wht_payee_name ?? "");
 
   const defaultValues: HpBillFormValues = initialValues ?? {
     hp_number: hpNumber,
@@ -103,10 +139,16 @@ export function BillForm({
     document_invoice_date: null,
     payment_method: null,
     payment_date: null,
+    slip_path: null,
+    slip_ocr_amount: null,
+    slip_ocr_date: null,
+    slip_ocr_bank: null,
+    slip_ocr_reference: null,
+    slip_looks_valid: null,
     advance_payer_name: "",
     spk_repaid_date: null,
     notes: "",
-    lines: [emptyLine()],
+    lines: [emptyLine(initialExpenseGroup)],
   };
 
   const {
@@ -129,6 +171,18 @@ export function BillForm({
   const vendorName = watch("vendor_name_snapshot");
   const documentType = watch("document_type");
   const paymentMethod = watch("payment_method");
+  const slipPath = watch("slip_path");
+  const slipOcrAmount = watch("slip_ocr_amount");
+  const slipOcrDate = watch("slip_ocr_date");
+  const slipOcrBank = watch("slip_ocr_bank");
+  const slipOcrReference = watch("slip_ocr_reference");
+  const slipLooksValid = watch("slip_looks_valid");
+  const selectedVendor = vendors.find((v) => v.id === vendorId);
+  const vendorCode = selectedVendor?.code ?? "-";
+  const vendorAddress = selectedVendor?.registered_address || selectedVendor?.mailing_address || "-";
+  // รายจ่ายในเอกสารนี้ใช้ได้เฉพาะบัญชีหมวดค่าใช้จ่าย (5000-00 เป็นต้นไป) — โค้ดก่อนหน้านั้นเป็น
+  // สินทรัพย์/หนี้สิน/ทุน/รายได้ ไม่เกี่ยวกับการบันทึกรายจ่ายรายบรรทัด
+  const expenseAccounts = accounts.filter((a) => a.code >= "5000-00");
 
   const totalBeforeVat = round2(linesWatch.reduce((sum, l) => sum + (l.amount_before_vat || 0), 0));
   const vatAmount = vatEnabled ? round2(totalBeforeVat * 0.07) : 0;
@@ -136,10 +190,33 @@ export function BillForm({
     requiresWht && whtRatePct != null ? round2(totalBeforeVat * (whtRatePct / 100)) : 0;
   const netTotal = round2(totalBeforeVat + vatAmount - whtAmount);
 
+  const paidFromPayments = (payments ?? []).reduce((sum, p) => sum + p.amount, 0);
+  const paidTotal = paidFromPayments > 0 ? paidFromPayments : watch("payment_date") ? netTotal : 0;
+  const currentStatus =
+    mode === "create"
+      ? "ร่างเอกสาร"
+      : deriveDocumentStatus({
+          isDraft: initialIsDraft,
+          isCancelled,
+          documentType,
+          netTotal,
+          paidTotal,
+        });
+
   // hp_payment_lines still stores vat_amount/wht_amount per row (no header table) — distribute
   // the one bill-level VAT/WHT decision across each row proportionally to its own amount so the
   // per-row figures sum exactly to the totals shown above.
   function buildLinesForSubmit(): HpBillFormValues["lines"] {
+    // สแนปช็อตหมวดแบบฟอร์มภาษีตอนบันทึก (ภ.ง.ด.53 = นิติบุคคล, ภ.ง.ด.3 = บุคคลธรรมดา) — ไม่ derive
+    // สดจาก vendors.vendor_type ตอนทำรายงาน เพราะถ้าแก้ประเภทผู้จำหน่ายภายหลัง เอกสารที่ยื่นแล้ว
+    // ไม่ควรถูกจัดหมวดใหม่ย้อนหลัง (หลักการเดียวกับ vendor_name_snapshot)
+    const pndForm = !requiresWht
+      ? null
+      : selectedVendor?.vendor_type === "นิติบุคคล"
+        ? "ภ.ง.ด.53"
+        : selectedVendor?.vendor_type === "บุคคลธรรมดา"
+          ? "ภ.ง.ด.3"
+          : null;
     return getValues("lines").map((line) => {
       const amount = line.amount_before_vat || 0;
       const vat = vatEnabled ? round2(amount * 0.07) : 0;
@@ -150,8 +227,8 @@ export function BillForm({
         requires_wht: requiresWht,
         wht_category_id: requiresWht ? whtCategoryId : null,
         wht_rate_pct: requiresWht ? whtRatePct : null,
-        wht_payee_name: requiresWht ? whtPayeeName : null,
         wht_amount: requiresWht ? wht : null,
+        wht_pnd_form: pndForm,
         net_paid_amount: round2(amount + vat - wht),
       };
     });
@@ -160,14 +237,55 @@ export function BillForm({
   function handleRegenerate() {
     startTransition(async () => {
       try {
-        const next = await generateHpNumber(getValues("transaction_date"));
+        const next = await peekHpNumber(getValues("transaction_date"));
         setCurrentHpNumber(next);
         setValue("hp_number", next);
-        toast.success(`สร้างเลข HP ใหม่แล้ว: ${next}`);
+        toast.success(`เลข HP ถัดไป: ${next}`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "สร้างเลข HP ไม่สำเร็จ");
+        toast.error(err instanceof Error ? err.message : "ดึงเลข HP ไม่สำเร็จ");
       }
     });
+  }
+
+  async function handleSlipUpload(file: File) {
+    setScanningSlip(true);
+    try {
+      const supabase = createClient();
+      const path = `${currentHpNumber}/header-${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("payment-slips").upload(path, file, {
+        upsert: true,
+      });
+      if (error) throw error;
+      setValue("slip_path", path);
+      toast.success("อัปโหลดสลิปแล้ว กำลังอ่านข้อมูล...");
+
+      const res = await fetch("/api/bill-payments/scan-slip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.message ?? "อ่านข้อมูลสลิปไม่สำเร็จ");
+        return;
+      }
+      setValue("slip_ocr_amount", data.amount ?? null);
+      setValue("slip_ocr_date", data.date ?? null);
+      setValue("slip_ocr_bank", data.bank ?? null);
+      setValue("slip_ocr_reference", data.reference ?? null);
+      setValue("slip_looks_valid", data.looks_like_transfer_slip ?? null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "อัปโหลดสลิปไม่สำเร็จ");
+    } finally {
+      setScanningSlip(false);
+    }
+  }
+
+  function applySlipToPaymentDate() {
+    if (slipOcrDate) {
+      setValue("payment_date", slipOcrDate);
+      toast.success("ใช้ข้อมูลจากสลิปแล้ว");
+    }
   }
 
   function onSave(saveMode: "draft" | "final") {
@@ -181,12 +299,13 @@ export function BillForm({
     }
     startTransition(async () => {
       try {
-        await saveHpBill(values, saveMode);
+        const result = await saveHpBill(values, saveMode, mode === "create");
+        setCurrentHpNumber(result.hp_number);
         toast.success(saveMode === "final" ? "บันทึกและปิดงานแล้ว" : "บันทึกร่างแล้ว");
         if (saveMode === "final") {
           router.push("/bills");
         } else if (mode === "create") {
-          router.replace(`/bills/${values.hp_number}/edit`);
+          router.replace(`/bills/${result.hp_number}/edit`);
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ");
@@ -194,40 +313,119 @@ export function BillForm({
     });
   }
 
-  async function handleDeleteBill() {
-    if (!confirm(`ยืนยันลบบิล ${currentHpNumber} ทั้งหมด?`)) return;
+  async function handleIssueWhtCertificate() {
     startTransition(async () => {
       try {
-        await deleteHpBill(currentHpNumber);
-        toast.success("ลบบิลแล้ว");
+        const res = await fetch(`/api/bills/${currentHpNumber}/wht-certificate`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          toast.error(data?.message ?? "ออกใบ 50 ทวิ ไม่สำเร็จ");
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `50twi-${currentHpNumber}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error("ออกใบ 50 ทวิ ไม่สำเร็จ");
+      }
+    });
+  }
+
+  async function handlePrint(endpoint: string, filenamePrefix: string) {
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/bills/${currentHpNumber}/${endpoint}`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          toast.error(data?.message ?? "พิมพ์เอกสารไม่สำเร็จ");
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${filenamePrefix}-${currentHpNumber}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error("พิมพ์เอกสารไม่สำเร็จ");
+      }
+    });
+  }
+
+  async function handleCancelBill() {
+    if (!confirm(`ยืนยันยกเลิกเอกสาร ${currentHpNumber}? เอกสารจะยังอยู่ในระบบแต่จะถูกประทับตรา "ยกเลิก"`))
+      return;
+    startTransition(async () => {
+      try {
+        await cancelHpBill(currentHpNumber);
+        toast.success("ยกเลิกเอกสารแล้ว");
         router.push("/bills");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "ลบไม่สำเร็จ");
+        toast.error(err instanceof Error ? err.message : "ยกเลิกไม่สำเร็จ");
       }
     });
   }
 
   return (
-    <form onSubmit={handleSubmit(() => {})} className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[1fr_320px]">
+    <form onSubmit={handleSubmit(() => {})} className="relative mx-auto max-w-3xl space-y-5 p-5">
+      <RibbonBadge label={currentStatus} tone={documentStatusTone(currentStatus)} />
       <div className="space-y-6">
         {/* Header card */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-ink">ข้อมูลหัวบิล</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="เลข HP">
-              <div className="flex items-center gap-2">
-                <Input value={currentHpNumber} readOnly className="bg-muted font-medium" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="inline-block size-1.5 rounded-full bg-info" />
+              <p className="text-sm font-medium text-ink">ข้อมูลทั่วไป</p>
+              <StatusBadge label={currentStatus} tone={documentStatusTone(currentStatus)} />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>เลข HP: </span>
+              <span className="font-mono font-medium text-ink">{currentHpNumber}</span>
+              {mode === "create" && (
                 <Button
                   type="button"
-                  variant="outline"
-                  size="icon"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={handleRegenerate}
                   disabled={isPending}
-                  aria-label="สุ่มเลข HP ใหม่"
+                  aria-label="ดูเลข HP ถัดไป"
                 >
-                  <RefreshCw className="size-4" />
+                  <RefreshCw className="size-3.5" />
                 </Button>
-              </div>
+              )}
+            </div>
+          </div>
+
+          {isCancelled && (
+            <div className="rounded-lg bg-danger-bg px-3 py-2 text-sm font-medium text-danger">
+              เอกสารนี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขหรือบันทึกซ้ำได้
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="ผู้จำหน่าย" required className="sm:col-span-2">
+              <VendorCombobox
+                vendors={vendors}
+                vendorId={vendorId}
+                vendorName={vendorName}
+                onChange={({ vendor_id, vendor_name_snapshot }) => {
+                  setValue("vendor_id", vendor_id);
+                  setValue("vendor_name_snapshot", vendor_name_snapshot);
+                }}
+              />
+            </FormField>
+
+            <FormField label="รหัสผู้จำหน่าย">
+              <Input value={vendorCode} disabled readOnly />
+            </FormField>
+
+            <FormField label="ที่อยู่ผู้จำหน่าย" className="sm:col-span-2">
+              <Input value={vendorAddress} disabled readOnly />
             </FormField>
 
             <Controller
@@ -258,40 +456,52 @@ export function BillForm({
               )}
             />
 
-            <FormField label="ผู้จำหน่าย" required>
-              <VendorCombobox
-                vendors={vendors}
-                vendorId={vendorId}
-                vendorName={vendorName}
-                onChange={({ vendor_id, vendor_name_snapshot }) => {
-                  setValue("vendor_id", vendor_id);
-                  setValue("vendor_name_snapshot", vendor_name_snapshot);
+            <FormField label="สถานะเอกสารภาษีซื้อ">
+              <Select
+                value={documentType === "ยังไม่มีเอกสาร" ? "pending" : "received"}
+                onValueChange={(v) => {
+                  if (v === "pending") {
+                    setValue("document_type", "ยังไม่มีเอกสาร");
+                  } else {
+                    setValue("document_type", "ใบกำกับภาษี");
+                  }
                 }}
-              />
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {(value: string) => (value === "pending" ? "ยังไม่ได้รับ" : "ได้รับแล้ว")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">ยังไม่ได้รับ</SelectItem>
+                  <SelectItem value="received">ได้รับแล้ว</SelectItem>
+                </SelectContent>
+              </Select>
             </FormField>
 
-            <Controller
-              control={control}
-              name="document_type"
-              render={({ field }) => (
-                <FormField label="เอกสารที่ได้รับ">
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
-                      <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
-                      <SelectItem value="ยังไม่มีเอกสาร">ยังไม่มีเอกสาร</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              )}
-            />
             {documentType !== "ยังไม่มีเอกสาร" && (
-              <FormField label="เลขที่เอกสาร">
-                <Input {...register("document_number")} placeholder="ไม่จำเป็นต้องกรอกก็ได้" />
-              </FormField>
+              <>
+                <Controller
+                  control={control}
+                  name="document_type"
+                  render={({ field }) => (
+                    <FormField label="ประเภทเอกสาร">
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
+                          <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  )}
+                />
+                <FormField label="เลขที่เอกสาร">
+                  <Input {...register("document_number")} placeholder="ไม่จำเป็นต้องกรอกก็ได้" />
+                </FormField>
+              </>
             )}
             {documentType === "ใบกำกับภาษี" && (
               <Controller
@@ -316,8 +526,16 @@ export function BillForm({
         {/* Line items */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-ink">รายการย่อย</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => append(emptyLine())}>
+            <div className="flex items-center gap-2">
+              <span className="inline-block size-1.5 rounded-full bg-info" />
+              <p className="text-sm font-medium text-ink">รายการย่อย</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append(emptyLine(linesWatch[linesWatch.length - 1]?.expense_group))}
+            >
               <Plus className="size-4" />
               เพิ่มรายการ
             </Button>
@@ -327,10 +545,13 @@ export function BillForm({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[11.5px] font-bold tracking-wide text-muted-foreground uppercase">
-                  <th className="p-2">รายละเอียด</th>
+                  <th className="w-9 p-2">ลำดับ</th>
                   <th className="p-2">รหัสบัญชี</th>
-                  <th className="p-2">รหัสรถ/เครน</th>
-                  <th className="p-2">ค่าใช้จ่าย</th>
+                  <th className="p-2">รายละเอียด</th>
+                  <th className="p-2">รหัสรถ</th>
+                  <th className="p-2">จำนวนหน่วย</th>
+                  <th className="p-2">ราคาต่อหน่วย</th>
+                  <th className="p-2">รวม</th>
                   <th className="w-9 p-2" />
                 </tr>
               </thead>
@@ -340,8 +561,10 @@ export function BillForm({
                     key={field.id}
                     index={index}
                     control={control}
-                    accounts={accounts}
+                    setValue={setValue}
+                    accounts={expenseAccounts}
                     vehicles={vehicles}
+                    assetCategories={assetCategories}
                     onRemove={() => remove(index)}
                     removable={fields.length > 1}
                   />
@@ -349,8 +572,8 @@ export function BillForm({
               </tbody>
               <tfoot>
                 <tr className="border-t border-border font-semibold text-ink">
-                  <td className="p-2" colSpan={3}>
-                    ค่าใช้จ่ายรวม
+                  <td className="p-2" colSpan={6}>
+                    รวมทั้งสิ้น
                   </td>
                   <td className="p-2 font-mono">{formatCurrency(totalBeforeVat)}</td>
                   <td className="p-2" />
@@ -372,12 +595,12 @@ export function BillForm({
           )}
 
           {/* หัก ณ ที่จ่าย — one decision for the whole bill */}
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+          <div className="inline-flex w-fit items-center gap-3 rounded-lg border border-border px-3 py-2">
             <Label>ต้องหัก ณ ที่จ่าย</Label>
             <Switch checked={requiresWht} onCheckedChange={setRequiresWht} />
           </div>
           {requiresWht && (
-            <div className="grid animate-in fade-in slide-in-from-top-1 grid-cols-1 gap-3 rounded-lg bg-warn-bg p-4 sm:grid-cols-3">
+            <div className="grid animate-in fade-in slide-in-from-top-1 grid-cols-1 gap-3 rounded-lg bg-warn-bg p-4 sm:grid-cols-2">
               <FormField label="หมวดหัก ณ ที่จ่าย" required>
                 <Select
                   value={whtCategoryId ?? NONE}
@@ -412,13 +635,6 @@ export function BillForm({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="ชื่อผู้รับเงิน (ใบหัก)">
-                <Input
-                  value={whtPayeeName ?? ""}
-                  onChange={(e) => setWhtPayeeName(e.target.value)}
-                  className="bg-background"
-                />
-              </FormField>
               <FormField label="ยอดหัก ณ ที่จ่าย (คำนวณอัตโนมัติ)">
                 <div className="flex h-8 items-center rounded-lg bg-background px-2.5 font-mono text-sm font-semibold text-warn">
                   {formatCurrency(whtAmount)}
@@ -430,7 +646,10 @@ export function BillForm({
 
         {/* Payment section — usually filled in later, after the bill itself is entered */}
         <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-ink">การจ่ายเงิน</p>
+          <div className="flex items-center gap-2">
+            <span className="inline-block size-1.5 rounded-full bg-info" />
+            <p className="text-sm font-medium text-ink">การจ่ายเงิน</p>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Controller
               control={control}
@@ -478,32 +697,111 @@ export function BillForm({
               </>
             )}
           </div>
+
+          <FormField label="สลิปโอนเงิน (ถ้ามี)">
+            <FileDropzone
+              accept="image/*"
+              disabled={scanningSlip}
+              onFile={handleSlipUpload}
+              attachedHint={slipPath && !scanningSlip ? "แนบไฟล์แล้ว" : undefined}
+            />
+          </FormField>
+
+          {slipPath &&
+            (slipOcrAmount != null || slipOcrDate || slipOcrBank || slipOcrReference || slipLooksValid != null) && (
+              <div
+                className={cn(
+                  "space-y-2 rounded-lg border p-3 text-sm",
+                  slipLooksValid ? "border-success/30 bg-success-bg" : "border-warn/30 bg-warn-bg",
+                )}
+              >
+                <div className="flex items-center gap-1.5 font-medium">
+                  {slipLooksValid ? (
+                    <>
+                      <ShieldCheck className="size-4 text-success" />
+                      <span className="text-success">ดูเหมือน slip จริง</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldQuestion className="size-4 text-warn" />
+                      <span className="text-warn">ตรวจสอบไม่ผ่าน กรุณาตรวจสอบเอง</span>
+                    </>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  จำนวนเงิน: {slipOcrAmount != null ? formatCurrency(slipOcrAmount) : "-"} · วันที่:{" "}
+                  {slipOcrDate ? formatThaiDate(slipOcrDate) : "-"} · ธนาคาร: {slipOcrBank ?? "-"} ·
+                  เลขอ้างอิง: {slipOcrReference ?? "-"}
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={applySlipToPaymentDate}>
+                  ใช้ข้อมูลนี้
+                </Button>
+              </div>
+            )}
+
           <FormField label="หมายเหตุ">
             <Textarea {...register("notes")} rows={2} />
           </FormField>
-        </div>
 
-        <div className="flex items-center justify-between">
-          {mode === "edit" ? (
-            <Button type="button" variant="destructive" onClick={handleDeleteBill} disabled={isPending}>
-              <Trash2 className="size-4" />
-              ลบบิลนี้
-            </Button>
-          ) : (
-            <span />
+          {mode === "edit" && (
+            <PaymentHistory hpNumber={currentHpNumber} payments={payments ?? []} netTotal={netTotal} />
           )}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onSave("draft")} disabled={isPending}>
-              บันทึกร่าง
-            </Button>
-            <Button type="button" onClick={() => onSave("final")} disabled={isPending}>
-              บันทึกและปิดงาน
-            </Button>
-          </div>
         </div>
       </div>
 
-      <SummarySidebar beforeVat={totalBeforeVat} vat={vatAmount} wht={whtAmount} net={netTotal} />
+      <SummaryBar beforeVat={totalBeforeVat} vat={vatAmount} wht={whtAmount} net={netTotal} />
+
+      <div className="flex items-center justify-between">
+        {mode === "edit" && !isCancelled ? (
+          <Button type="button" variant="destructive" onClick={handleCancelBill} disabled={isPending}>
+            <Ban className="size-4" />
+            ยกเลิกเอกสาร
+          </Button>
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-2">
+          {mode === "edit" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button type="button" variant="outline" disabled={isPending} />}>
+                <Printer className="size-4" />
+                พิมพ์
+                <ChevronDown className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handlePrint("document", "bill")}>
+                  พิมพ์บันทึกรายจ่าย
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePrint("payment-voucher", "voucher")}>
+                  พิมพ์ใบสำคัญจ่าย
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePrint("receipt-substitute", "receipt-substitute")}>
+                  พิมพ์ใบรับรองแทนใบเสร็จรับเงิน
+                </DropdownMenuItem>
+                {requiresWht && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleIssueWhtCertificate}>
+                      ออกหนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onSave("draft")}
+            disabled={isPending || isCancelled}
+          >
+            บันทึกร่าง
+          </Button>
+          <Button type="button" onClick={() => onSave("final")} disabled={isPending || isCancelled}>
+            บันทึกและปิดงาน
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }

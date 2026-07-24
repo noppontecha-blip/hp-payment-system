@@ -32,6 +32,10 @@ export function VendorCombobox({
     [vendors],
   );
   const selectedVendor = vendors.find((v) => v.id === vendorId);
+  // Freeform names (no match in the vendor master) still get a real, joinable vendor_id —
+  // this fixed "ทั่วไป" row instead of null — while vendor_name_snapshot keeps the actual
+  // typed name for display.
+  const genericVendor = vendors.find((v) => v.code === "V9999");
 
   return (
     <div className="space-y-1">
@@ -47,11 +51,14 @@ export function VendorCombobox({
         onInputValueChange={(text, eventDetails) => {
           // Selecting an item (or closing/blurring the popup) also fires this callback with the
           // item's label — skip those so we don't immediately null out the vendor_id we just set
-          // in onValueChange. Only genuine keystrokes (reason "none") count as free text.
-          if (eventDetails.reason !== "none") {
+          // in onValueChange. Base UI's Combobox reports genuine keystrokes with reason
+          // "input-change" (confirmed against node_modules/@base-ui/react's reason-parts.js —
+          // the previous "none" check here never matched a real keystroke, silently breaking
+          // freeform entry entirely).
+          if (eventDetails.reason !== "input-change") {
             return;
           }
-          onChange({ vendor_id: null, vendor_name_snapshot: text });
+          onChange({ vendor_id: genericVendor?.id ?? null, vendor_name_snapshot: text });
         }}
       >
         <ComboboxInput placeholder="ค้นหาหรือพิมพ์ชื่อผู้จำหน่าย" className="w-full" />

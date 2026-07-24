@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 
+export async function generateVendorCode(): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("generate_next_vendor_code");
+  if (error) throw new Error(error.message);
+  return data as unknown as string;
+}
+
 export async function createVendor(values: VendorFormValues) {
   const parsed = vendorSchema.parse(values);
   const supabase = await createClient();

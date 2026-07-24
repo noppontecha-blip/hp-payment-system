@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Download, Plus, Search } from "lucide-react";
+import { ChevronDown, Download, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,8 +29,9 @@ import {
 } from "@/components/ui/table";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { FilterField, filterTriggerClassName } from "@/components/shared/filter-field";
-import { StatusBadge, docStatusTone } from "@/components/shared/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { CategoryTag } from "@/components/shared/category-tag";
+import { deriveDocumentStatus, documentStatusTone } from "@/lib/utils/document-status";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate } from "@/lib/utils/thai-date";
 import { cn } from "@/lib/utils";
@@ -32,11 +39,31 @@ import type { Database } from "@/lib/types/database";
 
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
+type BillPayment = Database["public"]["Tables"]["bill_payments"]["Row"];
 
 const ALL = "__all__";
 
-export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor[] }) {
+// Category tabs mirror the "บันทึกรายจ่ายใหม่" categories the create-menu links to
+// (?category= slugs match app/(app)/bills/new/page.tsx's CATEGORY_DEFAULTS) — this page is now
+// the single hub for both browsing and creating bills per category, so the two no longer duplicate.
+const CATEGORIES: { key: string; label: string; expenseGroup: Line["expense_group"] | null }[] = [
+  { key: "all", label: "ทั้งหมด", expenseGroup: null },
+  { key: "vehicle-cost", label: "ต้นทุนรายคัน", expenseGroup: "ต้นทุนรายคัน" },
+  { key: "sga", label: "ค่าใช้จ่ายขายและบริหาร", expenseGroup: "ค่าใช้จ่ายขายและบริหาร" },
+  { key: "asset", label: "สินทรัพย์", expenseGroup: "สินทรัพย์" },
+];
+
+export function BillsClient({
+  lines,
+  vendors,
+  payments,
+}: {
+  lines: Line[];
+  vendors: Vendor[];
+  payments: BillPayment[];
+}) {
   const router = useRouter();
+  const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
@@ -45,9 +72,48 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
   const [documentType, setDocumentType] = useState(ALL);
   const [whtFilter, setWhtFilter] = useState(ALL);
 
+  const paidByHpNumber = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of payments) {
+      map.set(p.hp_number, (map.get(p.hp_number) ?? 0) + p.amount);
+    }
+    return map;
+  }, [payments]);
+
+  const netByHpNumber = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of lines) {
+      map.set(l.hp_number, (map.get(l.hp_number) ?? 0) + l.net_paid_amount);
+    }
+    return map;
+  }, [lines]);
+
+  function statusForLine(line: Line) {
+    const netTotal = netByHpNumber.get(line.hp_number) ?? line.net_paid_amount;
+    const paidFromPayments = paidByHpNumber.get(line.hp_number) ?? 0;
+    const paidTotal = paidFromPayments > 0 ? paidFromPayments : line.payment_date ? netTotal : 0;
+    return deriveDocumentStatus({
+      isDraft: line.is_draft,
+      isCancelled: line.is_cancelled,
+      documentType: line.document_type,
+      netTotal,
+      paidTotal,
+    });
+  }
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of CATEGORIES) {
+      counts.set(c.key, c.expenseGroup ? lines.filter((l) => l.expense_group === c.expenseGroup).length : lines.length);
+    }
+    return counts;
+  }, [lines]);
+
   const filtered = useMemo(() => {
+    const activeCategory = CATEGORIES.find((c) => c.key === category);
     const q = search.trim().toLowerCase();
     return lines.filter((line) => {
+      if (activeCategory?.expenseGroup && line.expense_group !== activeCategory.expenseGroup) return false;
       if (from && line.transaction_date < from) return false;
       if (to && line.transaction_date > to) return false;
       if (workType !== ALL && line.work_type !== workType) return false;
@@ -64,7 +130,7 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
         return false;
       return true;
     });
-  }, [lines, search, from, to, workType, vendorId, documentType, whtFilter]);
+  }, [lines, category, search, from, to, workType, vendorId, documentType, whtFilter]);
 
   function handleExport() {
     const params = new URLSearchParams();
@@ -80,6 +146,32 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
 
   return (
     <div className="space-y-4 p-5">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setCategory(c.key)}
+            className={cn(
+              "flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              category === c.key
+                ? "border-navy text-navy"
+                : "border-transparent text-muted-foreground hover:text-ink",
+            )}
+          >
+            {c.label}
+            <span
+              className={cn(
+                "rounded-full px-1.5 py-0.5 text-[11px] font-mono",
+                category === c.key ? "bg-navy text-white" : "bg-muted text-muted-foreground",
+              )}
+            >
+              {categoryCounts.get(c.key) ?? 0}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
         <FilterField label="ค้นหา" className="w-64">
           <div className="relative">
@@ -167,10 +259,24 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
             <Download className="size-4" />
             ส่งออก Excel
           </Button>
-          <Button render={<Link href="/bills/new" />} nativeButton={false}>
-            <Plus className="size-4" />
-            สร้างบิลใหม่
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button />}>
+              <Plus className="size-4" />
+              สร้างเอกสาร
+              <ChevronDown className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push("/bills/new?category=vehicle-cost")}>
+                ต้นทุนรายคัน
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/bills/new?category=sga")}>
+                ค่าใช้จ่ายขายและบริหาร
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/bills/new?category=asset")}>
+                สินทรัพย์
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -183,12 +289,12 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                 <TableHead>วันที่</TableHead>
                 <TableHead>ผู้จำหน่าย</TableHead>
                 <TableHead>รายละเอียด</TableHead>
-                <TableHead>ประเภทงาน</TableHead>
+                <TableHead>หมวด</TableHead>
                 <TableHead className="text-right">ก่อน VAT</TableHead>
                 <TableHead className="text-right">VAT</TableHead>
                 <TableHead className="text-right">หัก ณ ที่จ่าย</TableHead>
                 <TableHead className="text-right">สุทธิ</TableHead>
-                <TableHead>เอกสารซื้อ</TableHead>
+                <TableHead>สถานะ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,7 +311,8 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                   onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
                   className={cn(
                     "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
-                    line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
+                    line.is_cancelled && "opacity-50 grayscale",
+                    !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                   )}
                 >
                   <TableCell className="font-mono">{line.hp_number}</TableCell>
@@ -221,7 +328,12 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                   </TableCell>
                   <TableCell className="max-w-64 truncate">{line.description}</TableCell>
                   <TableCell>
-                    <CategoryTag label={line.work_type} />
+                    <div className="flex flex-wrap items-center gap-1">
+                      <CategoryTag label={line.expense_group} />
+                      {line.cost_subtype && (
+                        <CategoryTag label={line.cost_subtype} className="border-ink/10 text-muted-foreground" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(line.amount_before_vat)}</TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(line.vat_amount)}</TableCell>
@@ -232,7 +344,10 @@ export function BillsClient({ lines, vendors }: { lines: Line[]; vendors: Vendor
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge label={line.document_type} tone={docStatusTone(line.document_type)} />
+                    {(() => {
+                      const status = statusForLine(line);
+                      return <StatusBadge label={status} tone={documentStatusTone(status)} />;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}

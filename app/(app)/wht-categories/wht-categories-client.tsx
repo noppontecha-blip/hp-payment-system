@@ -23,14 +23,24 @@ export function WhtCategoriesClient({ categories }: { categories: WhtCategory[] 
     return categories.filter((c) => c.name.toLowerCase().includes(q));
   }, [categories, search]);
 
+  function formatRate(pct: number | null, progressive: boolean) {
+    if (progressive) return "อัตราก้าวหน้า";
+    return pct != null ? `${pct}%` : "-";
+  }
+
   const columns: Column<WhtCategory>[] = [
     { key: "name", header: "ชื่อหมวด", render: (c) => c.name },
     {
-      key: "default_rate_pct",
-      header: "อัตราเริ่มต้น",
+      key: "rate_corporate_pct",
+      header: "นิติบุคคล",
       align: "right",
-      numeric: true,
-      render: (c) => (c.default_rate_pct != null ? `${c.default_rate_pct}%` : "-"),
+      render: (c) => formatRate(c.rate_corporate_pct, c.rate_corporate_progressive),
+    },
+    {
+      key: "rate_individual_pct",
+      header: "บุคคลธรรมดา",
+      align: "right",
+      render: (c) => formatRate(c.rate_individual_pct, c.rate_individual_progressive),
     },
     { key: "reference_note", header: "หมายเหตุ", render: (c) => c.reference_note ?? "-" },
   ];

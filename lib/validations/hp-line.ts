@@ -1,15 +1,27 @@
 import { z } from "zod";
 
-// One row of the editable line-items table (7.3): รายละเอียด / รหัสบัญชี / รหัสรถ / ค่าใช้จ่าย.
-// VAT and หัก ณ ที่จ่าย are a single decision for the whole bill (see BillForm) — bill-form.tsx
-// distributes the resulting amounts across each row proportionally before saving, since
-// hp_payment_lines still stores vat_amount/wht_amount per row (no separate header table).
+// One row of the editable line-items table: รหัสบัญชี / รายละเอียด / รหัสรถ / ค่าใช้จ่าย, plus
+// its own หมวดรายจ่าย. VAT and หัก ณ ที่จ่าย are a single decision for the whole bill (see
+// BillForm) — bill-form.tsx distributes the resulting amounts across each row proportionally
+// before saving, since hp_payment_lines still stores vat_amount/wht_amount per row (no
+// separate header table).
+// หมวดหมู่การบันทึกรายจ่าย — เลือกได้ต่อรายการย่อย (ไม่ใช่ทั้งเอกสาร) เพราะเอกสารเดียว
+// อาจมีทั้งต้นทุนรายคันและค่าใช้จ่ายขายและบริหารปนกันได้. ต้นทุนรายคันแยกย่อยด้วย cost_subtype
+// (อะไหล่ซ่อม/สต๊อก ต้องระบุรถ/เครน, วัสดุสิ้นเปลืองไม่บังคับ). สินทรัพย์ต้องระบุหมวด+อายุการใช้งาน.
 const hpLineItemBase = z.object({
   id: z.string().uuid().optional(),
   description: z.string().min(1, "กรุณากรอกรายละเอียด"),
   account_code_id: z.string().uuid().nullable().optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
   related_vehicles_text: z.string().nullable().optional(),
+  expense_group: z
+    .enum(["ต้นทุนรายคัน", "ค่าใช้จ่ายขายและบริหาร", "สินทรัพย์"])
+    .default("ต้นทุนรายคัน"),
+  cost_subtype: z.enum(["อะไหล่ซ่อม/สต๊อก", "วัสดุสิ้นเปลือง"]).nullable().optional(),
+  asset_category_id: z.string().uuid().nullable().optional(),
+  asset_useful_life_years: z.coerce.number().nullable().optional(),
+  quantity: z.coerce.number().positive("กรุณากรอกจำนวนหน่วย").default(1),
+  unit_price: z.coerce.number().min(0).default(0),
   amount_before_vat: z.coerce.number().min(0),
   vat_amount: z.coerce.number().min(0),
   requires_wht: z.boolean().default(false),
@@ -18,6 +30,7 @@ const hpLineItemBase = z.object({
   wht_payee_name: z.string().nullable().optional(),
   wht_amount: z.coerce.number().nullable().optional(),
   wht_issue_date: z.string().nullable().optional(),
+  wht_pnd_form: z.enum(["ภ.ง.ด.3", "ภ.ง.ด.53"]).nullable().optional(),
   net_paid_amount: z.coerce.number(),
 });
 
@@ -37,6 +50,29 @@ export const hpLineItemSchema = hpLineItemBase.superRefine((line, ctx) => {
         message: "กรุณากรอกยอดหัก ณ ที่จ่าย",
       });
     }
+  }
+  if (line.expense_group === "ต้นทุนรายคัน") {
+    if (!line.cost_subtype) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cost_subtype"],
+        message: "กรุณาเลือกประเภทต้นทุน",
+      });
+    }
+    if (line.cost_subtype === "อะไหล่ซ่อม/สต๊อก" && !line.vehicle_id) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["vehicle_id"],
+        message: "กรุณาเลือกรถ/เครน (จำเป็นสำหรับอะไหล่ซ่อม/สต๊อก)",
+      });
+    }
+  }
+  if (line.expense_group === "สินทรัพย์" && !line.asset_category_id) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["asset_category_id"],
+      message: "กรุณาเลือกหมวดสินทรัพย์",
+    });
   }
 });
 export type HpLineItemFormValues = z.infer<typeof hpLineItemBase>;
@@ -59,6 +95,13 @@ const hpBillHeaderFields = {
   // วิธีการจ่ายเงิน — จ่ายผ่านบัญชีธนาคารบริษัทฯ หรือมีคนสำรองจ่ายไปก่อน
   payment_method: z.enum(["บัญชีธนาคารบริษัท", "สำรองจ่าย"]).nullable().optional(),
   payment_date: z.string().nullable().optional(),
+  // สลิปโอนเงินที่แนบกับ "วิธีการจ่ายเงิน" หลักของเอกสาร (แยกจากสลิปรายงวดใน bill_payments)
+  slip_path: z.string().nullable().optional(),
+  slip_ocr_amount: z.coerce.number().nullable().optional(),
+  slip_ocr_date: z.string().nullable().optional(),
+  slip_ocr_bank: z.string().nullable().optional(),
+  slip_ocr_reference: z.string().nullable().optional(),
+  slip_looks_valid: z.boolean().nullable().optional(),
   advance_payer_name: z.string().nullable().optional(),
   // วันที่บริษัทคืนเงินให้ผู้สำรองจ่าย (มีค่า = คืนแล้ว)
   spk_repaid_date: z.string().nullable().optional(),
@@ -74,9 +117,9 @@ export const hpBillDraftSchema = z.object({
   lines: z.array(hpLineItemBase).min(1, "ต้องมีอย่างน้อย 1 รายการย่อย"),
 });
 
-// "บันทึกและปิดงาน" — full validation per spec 4.3 (WHT category + amount required when the
-// bill-level WHT toggle is on — gets distributed to every row before this runs, so they all
-// pass/fail together).
+// "บันทึกและปิดงาน" — full validation (WHT + หมวดรายจ่าย sub-fields required per line, see
+// hpLineItemSchema's own superRefine above — each line validates independently now that
+// categorization is per-line, not a single bill-level choice).
 export const hpBillFinalSchema = z.object({
   ...hpBillHeaderFields,
   lines: z.array(hpLineItemSchema).min(1, "ต้องมีอย่างน้อย 1 รายการย่อย"),

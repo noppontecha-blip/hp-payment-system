@@ -11,8 +11,18 @@ import { deleteVendor } from "@/lib/actions/vendors";
 import type { Database } from "@/lib/types/database";
 
 type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
+type Account = Database["public"]["Tables"]["chart_of_accounts"]["Row"];
+type WhtCategory = Database["public"]["Tables"]["wht_categories"]["Row"];
 
-export function VendorsClient({ vendors }: { vendors: Vendor[] }) {
+export function VendorsClient({
+  vendors,
+  accounts,
+  whtCategories,
+}: {
+  vendors: Vendor[];
+  accounts: Account[];
+  whtCategories: WhtCategory[];
+}) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Vendor | null>(null);
@@ -77,7 +87,13 @@ export function VendorsClient({ vendors }: { vendors: Vendor[] }) {
         emptyLabel="ยังไม่มีข้อมูลผู้จำหน่าย"
       />
 
-      <VendorFormDialog open={open} onOpenChange={setOpen} vendor={editing} />
+      <VendorFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        vendor={editing}
+        accounts={accounts}
+        whtCategories={whtCategories}
+      />
     </div>
   );
 }
