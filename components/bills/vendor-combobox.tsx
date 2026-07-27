@@ -41,7 +41,14 @@ export function VendorCombobox({
     <div className="space-y-1">
       <Combobox
         items={items}
-        itemToStringLabel={(value) => vendors.find((v) => v.id === value)?.name ?? ""}
+        // Base UI calls this with either the full {value,label} item (while filtering the open
+        // list) or with just the plain id string (e.g. resolving the currently selected value) —
+        // confirmed empirically, since the docs only describe the {value,label}-item case. The
+        // declared type says this is always a string, but that doesn't match runtime behavior.
+        itemToStringLabel={(item: string) => {
+          const raw = item as unknown as string | VendorOption;
+          return typeof raw === "string" ? (vendors.find((v) => v.id === raw)?.name ?? "") : raw.label;
+        }}
         value={vendorId ?? null}
         onValueChange={(value) => {
           const match = vendors.find((v) => v.id === value);
