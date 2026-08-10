@@ -260,7 +260,7 @@ export function VendorFormDialog({
                 className="col-span-2"
               >
                 <div className="flex items-center gap-2">
-                  <Input {...register("tax_id")} placeholder="13 หลัก" />
+                  <Input {...register("tax_id")} placeholder="13 หลัก" maxLength={13} className="w-40" />
                   {vendorType === "นิติบุคคล" && (
                     <Button
                       type="button"

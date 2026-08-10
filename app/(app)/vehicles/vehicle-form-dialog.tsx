@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/shared/form-field";
 import {
   Select,
@@ -59,7 +58,7 @@ const emptyValues: VehicleFormValues = {
   code: "",
   short_name: "",
   vehicle_type: undefined as unknown as VehicleFormValues["vehicle_type"],
-  registered_under: "",
+  brand: "",
   plate_number: "",
   size: "",
   model: "",
@@ -91,7 +90,7 @@ export function VehicleFormDialog({
           code: vehicle.code,
           short_name: vehicle.short_name ?? "",
           vehicle_type: vehicle.vehicle_type ?? (undefined as unknown as VehicleFormValues["vehicle_type"]),
-          registered_under: vehicle.registered_under ?? "",
+          brand: vehicle.brand ?? "",
           plate_number: vehicle.plate_number ?? "",
           size: vehicle.size ?? "",
           model: vehicle.model ?? "",
@@ -175,11 +174,11 @@ export function VehicleFormDialog({
                 placeholder="เช่น เครน4 — ใช้เลือกรถตอนบันทึกค่าใช้จ่ายแทนรหัสยาวๆ"
               />
             </FormField>
-            <FormField label="รายละเอียดรถ" error={errors.registered_under?.message} className="col-span-2">
-              <Textarea {...register("registered_under")} rows={3} />
+            <FormField label="ยี่ห้อรถ" error={errors.brand?.message}>
+              <Input {...register("brand")} />
             </FormField>
             <FormField label="ทะเบียน" error={errors.plate_number?.message}>
-              <Input {...register("plate_number")} />
+              <Input {...register("plate_number")} placeholder="เช่น 1กข-2345 ชลบุรี" />
             </FormField>
             <FormField label="ขนาด" error={errors.size?.message}>
               <Input {...register("size")} placeholder="เช่น 25 ตัน" />

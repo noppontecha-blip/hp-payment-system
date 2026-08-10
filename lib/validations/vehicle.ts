@@ -17,7 +17,7 @@ export const vehicleSchema = z.object({
     { message: "กรุณาเลือกประเภทรถ" },
   ),
   short_name: z.string().optional().nullable(),
-  registered_under: z.string().optional().nullable(),
+  brand: z.string().optional().nullable(),
   plate_number: z.string().optional().nullable(),
   size: z.string().optional().nullable(),
   model: z.string().optional().nullable(),

@@ -88,6 +88,7 @@ export function VendorsClient({
       />
 
       <VendorFormDialog
+        key={editing?.id ?? "new"}
         open={open}
         onOpenChange={setOpen}
         vendor={editing}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm, useFieldArray, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -246,6 +246,26 @@ export function BillForm({
       }
     });
   }
+
+  const transactionDate = watch("transaction_date");
+  const skipNextHpPeek = useRef(true);
+  // เลข HP อิงจากเดือนของวันที่ทำรายการ — พอเปลี่ยนวันที่ (เช่น ข้ามเดือน) เลขที่แสดงต้องขยับตาม
+  // ทันทีโดยไม่ต้องกดปุ่ม "ดูเลข HP ถัดไป" เอง ยังคงเป็นแค่ peek (ไม่ commit เลขจริงจนกว่าจะบันทึก)
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (skipNextHpPeek.current) {
+      skipNextHpPeek.current = false;
+      return;
+    }
+    peekHpNumber(transactionDate)
+      .then((next) => {
+        setCurrentHpNumber(next);
+        setValue("hp_number", next);
+      })
+      .catch(() => {
+        // เงียบไว้ — เลขเดิมยังแสดงอยู่ กดปุ่ม "ดูเลข HP ถัดไป" เพื่อลองใหม่ได้
+      });
+  }, [transactionDate, mode, setValue]);
 
   async function handleSlipUpload(file: File) {
     setScanningSlip(true);

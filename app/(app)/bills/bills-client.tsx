@@ -101,10 +101,13 @@ export function BillsClient({
     });
   }
 
+  // นับเป็นจำนวน "เอกสาร" (HP เลขที่ต่างกัน) ไม่ใช่จำนวนรายการย่อย — ให้ตรงกับตารางที่ยุบเหลือ
+  // 1 แถวต่อ HP ด้านล่าง ไม่งั้นตัวเลขที่แท็บกับจำนวนแถวที่เห็นจะไม่ตรงกัน
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const c of CATEGORIES) {
-      counts.set(c.key, c.expenseGroup ? lines.filter((l) => l.expense_group === c.expenseGroup).length : lines.length);
+      const matching = c.expenseGroup ? lines.filter((l) => l.expense_group === c.expenseGroup) : lines;
+      counts.set(c.key, new Set(matching.map((l) => l.hp_number)).size);
     }
     return counts;
   }, [lines]);
@@ -131,6 +134,28 @@ export function BillsClient({
       return true;
     });
   }, [lines, category, search, from, to, workType, vendorId, documentType, whtFilter]);
+
+  // เอกสารเดียว (HP เลขเดียวกัน) มีได้หลายรายการย่อย — ตารางสรุปนี้ยุบให้เหลือ 1 แถวต่อ HP โดยยอด
+  // เงินรวมของแถวคือผลรวมของรายการย่อยที่ผ่านตัวกรองอยู่ (ไม่ใช่ทั้งเอกสาร) ให้สอดคล้องกับแท็บหมวด
+  // ที่กรองเป็นรายการย่อยเช่นกัน ส่วนรายละเอียด/หมวดที่โชว์ใช้ของรายการแรกในเอกสารนั้น
+  const groupedRows = useMemo(() => {
+    const map = new Map<string, Line[]>();
+    for (const line of filtered) {
+      const group = map.get(line.hp_number);
+      if (group) group.push(line);
+      else map.set(line.hp_number, [line]);
+    }
+    return Array.from(map.values()).map((group) => ({
+      hpNumber: group[0].hp_number,
+      first: group[0],
+      lineCount: group.length,
+      amountBeforeVat: group.reduce((sum, l) => sum + l.amount_before_vat, 0),
+      vatAmount: group.reduce((sum, l) => sum + l.vat_amount, 0),
+      whtAmount: group.reduce((sum, l) => sum + (l.requires_wht ? (l.wht_amount ?? 0) : 0), 0),
+      netPaidAmount: group.reduce((sum, l) => sum + l.net_paid_amount, 0),
+      requiresWht: group.some((l) => l.requires_wht),
+    }));
+  }, [filtered]);
 
   function handleExport() {
     const params = new URLSearchParams();
@@ -298,59 +323,67 @@ export function BillsClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 && (
+              {groupedRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="py-8 text-center text-muted-2">
                     ไม่พบรายการที่ตรงกับเงื่อนไข
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((line) => (
-                <TableRow
-                  key={line.id}
-                  onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
-                  className={cn(
-                    "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
-                    line.is_cancelled && "opacity-50 grayscale",
-                    !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
-                  )}
-                >
-                  <TableCell className="font-mono">{line.hp_number}</TableCell>
-                  <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/bills/${line.hp_number}/edit`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="font-normal text-navy underline decoration-navy/30 underline-offset-2"
-                    >
-                      {line.vendor_name_snapshot}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="max-w-64 truncate">{line.description}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <CategoryTag label={line.expense_group} />
-                      {line.cost_subtype && (
-                        <CategoryTag label={line.cost_subtype} className="border-ink/10 text-muted-foreground" />
+              {groupedRows.map((row) => {
+                const line = row.first;
+                return (
+                  <TableRow
+                    key={row.hpNumber}
+                    onClick={() => router.push(`/bills/${row.hpNumber}/edit`)}
+                    className={cn(
+                      "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
+                      line.is_cancelled && "opacity-50 grayscale",
+                      !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
+                    )}
+                  >
+                    <TableCell className="font-mono">{row.hpNumber}</TableCell>
+                    <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/bills/${row.hpNumber}/edit`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-normal text-navy underline decoration-navy/30 underline-offset-2"
+                      >
+                        {line.vendor_name_snapshot}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-64 truncate">
+                      {line.description}
+                      {row.lineCount > 1 && (
+                        <span className="ml-1.5 text-muted-2">+{row.lineCount - 1} รายการ</span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(line.amount_before_vat)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(line.vat_amount)}</TableCell>
-                  <TableCell className="text-right font-mono">
-                    {line.requires_wht ? formatCurrency(line.wht_amount ?? 0) : "-"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatCurrency(line.net_paid_amount)}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const status = statusForLine(line);
-                      return <StatusBadge label={status} tone={documentStatusTone(status)} />;
-                    })()}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <CategoryTag label={line.expense_group} />
+                        {line.cost_subtype && (
+                          <CategoryTag label={line.cost_subtype} className="border-ink/10 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(row.amountBeforeVat)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(row.vatAmount)}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {row.requiresWht ? formatCurrency(row.whtAmount) : "-"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(row.netPaidAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const status = statusForLine(line);
+                        return <StatusBadge label={status} tone={documentStatusTone(status)} />;
+                      })()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

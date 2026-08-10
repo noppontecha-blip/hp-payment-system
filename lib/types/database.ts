@@ -59,7 +59,7 @@ export type Database = {
             | "ปิคอัพ"
             | "อื่นๆ"
             | null;
-          registered_under: string | null;
+          brand: string | null;
           plate_number: string | null;
           size: string | null;
           model: string | null;
