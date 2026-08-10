@@ -15,5 +15,12 @@ export function registerThaiFont() {
       { src: path.join(fontsDir, "NotoSansThai-Bold.ttf"), fontWeight: "bold" },
     ],
   });
+  // Thai script has no spaces between words, so react-pdf's default line-wrapping (which only
+  // breaks at spaces) treats a whole run of Thai text as one unbreakable "word" — confirmed via
+  // a standalone test that long Thai text (e.g. a line-item description) silently overflows past
+  // its box/page instead of wrapping, which is exactly what showed up as "missing" text. Splitting
+  // Thai runs into individual characters gives the layout engine a break point wherever needed.
+  // English/numeric text is left untouched so it keeps wrapping at normal word boundaries.
+  Font.registerHyphenationCallback((word) => (/[฀-๿]/.test(word) ? word.split("") : [word]));
   registered = true;
 }

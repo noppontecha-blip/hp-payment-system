@@ -57,12 +57,15 @@ const styles = StyleSheet.create({
   totalsRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderTop: `1pt solid ${BLUE}`,
-    marginTop: 2,
-    paddingTop: 2,
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    backgroundColor: BLUE_TINT,
     fontWeight: "bold",
     color: BLUE,
   },
+  trAlt: { backgroundColor: "#F7FAFE" },
   bahtLine: { marginTop: 6, textAlign: "right", color: "#6b7280" },
   certification: {
     marginTop: 16,
@@ -134,8 +137,8 @@ export function ReceiptSubstituteDocument({ data }: { data: ExpenseDocumentData 
             <Text style={[styles.th, { flex: 1.4 }]}>มูลค่าก่อนภาษี</Text>
             <Text style={[styles.th, { flex: 1, borderRight: 0 }]}>VAT</Text>
           </View>
-          {data.lines.map((line) => (
-            <View style={styles.tr} key={line.seq}>
+          {data.lines.map((line, i) => (
+            <View style={i % 2 === 1 ? { ...styles.tr, ...styles.trAlt } : styles.tr} key={line.seq}>
               <Text style={[styles.tdCenter, { width: 26 }]}>{line.seq}</Text>
               <View style={[styles.td, { flex: 3 }]}>
                 <Text>{line.accountCode || "-"}</Text>
@@ -174,8 +177,8 @@ export function ReceiptSubstituteDocument({ data }: { data: ExpenseDocumentData 
 
         <View style={styles.certification}>
           <Text>
-            ข้าพเจ้า {signerName} ขอรับรองว่า รายจ่ายข้างต้นนี้ข้าพเจ้าไม่อาจจะเรียกเก็บใบเสร็จรับเงินจาก
-            ผู้ขายได้ และข้าพเจ้าได้จ่ายเงินไปในนามทางบริษัทฯ {data.company.company_name} ({branchLabel})
+            ข้าพเจ้า {signerName} ขอรับรองว่า รายจ่ายข้างต้นนี้ข้าพเจ้าไม่สามารถเรียกเก็บใบเสร็จรับเงินจาก
+            ผู้ขายได้ และข้าพเจ้าได้จ่ายเงินไปในนามบริษัทฯ {data.company.company_name} ({branchLabel})
             โดยแท้จริง
           </Text>
         </View>

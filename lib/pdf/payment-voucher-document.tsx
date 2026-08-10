@@ -52,12 +52,15 @@ const styles = StyleSheet.create({
   totalsRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderTop: `1pt solid ${BLUE}`,
-    marginTop: 2,
-    paddingTop: 2,
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    backgroundColor: BLUE_TINT,
     fontWeight: "bold",
     color: BLUE,
   },
+  trAlt: { backgroundColor: "#F7FAFE" },
   bahtLine: { marginTop: 6, textAlign: "right", color: "#6b7280" },
   section: { marginTop: 12 },
   sectionTitle: { fontWeight: "bold", marginBottom: 4, color: BLUE },
@@ -135,7 +138,7 @@ export function PaymentVoucherDocument({ data }: { data: ExpenseDocumentData }) 
               <Text style={styles.value}>{data.vendor.address || "-"}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>ติดต่อกลับที่</Text>
+              <Text style={styles.label}>เบอร์ติดต่อกลับ</Text>
               <Text style={styles.value}>{data.vendor.contact_phone || "-"}</Text>
             </View>
           </View>
@@ -151,8 +154,8 @@ export function PaymentVoucherDocument({ data }: { data: ExpenseDocumentData }) 
             <Text style={[styles.th, { flex: 1 }]}>VAT</Text>
             <Text style={[styles.th, { flex: 1.1, borderRight: 0 }]}>หัก ณ ที่จ่าย</Text>
           </View>
-          {data.lines.map((line) => (
-            <View style={styles.tr} key={line.seq}>
+          {data.lines.map((line, i) => (
+            <View style={i % 2 === 1 ? { ...styles.tr, ...styles.trAlt } : styles.tr} key={line.seq}>
               <Text style={[styles.tdCenter, { width: 26 }]}>{line.seq}</Text>
               <View style={[styles.td, { flex: 3 }]}>
                 <Text>{line.accountCode || "-"}</Text>

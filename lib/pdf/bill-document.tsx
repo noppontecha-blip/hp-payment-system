@@ -50,12 +50,15 @@ const styles = StyleSheet.create({
   totalsRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderTop: `1pt solid ${BLUE}`,
-    marginTop: 2,
-    paddingTop: 2,
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    backgroundColor: BLUE_TINT,
     fontWeight: "bold",
     color: BLUE,
   },
+  trAlt: { backgroundColor: "#F7FAFE" },
   section: { marginTop: 12 },
   sectionTitle: { fontWeight: "bold", marginBottom: 4, color: BLUE },
   footer: { marginTop: 24, flexDirection: "row", justifyContent: "space-between" },
@@ -157,13 +160,13 @@ export function BillDocument({ data }: { data: BillDocumentData }) {
         <View style={styles.table}>
           <View style={styles.tr}>
             <Text style={[styles.th, { flex: 3 }]}>รายละเอียด</Text>
-            <Text style={[styles.th, { flex: 2 }]}>รหัสบัญชี</Text>
+            <Text style={[styles.th, { flex: 2 }]}>บัญชี</Text>
             <Text style={[styles.th, { flex: 2 }]}>รถ/เครน</Text>
             <Text style={[styles.th, { flex: 1.5 }]}>มูลค่าก่อนภาษี</Text>
             <Text style={[styles.th, { flex: 1, borderRight: 0 }]}>VAT</Text>
           </View>
           {data.lines.map((line, i) => (
-            <View style={styles.tr} key={i}>
+            <View style={i % 2 === 1 ? { ...styles.tr, ...styles.trAlt } : styles.tr} key={i}>
               <Text style={[styles.td, { flex: 3 }]}>{line.description}</Text>
               <Text style={[styles.td, { flex: 2 }]}>{line.accountLabel || "-"}</Text>
               <Text style={[styles.td, { flex: 2 }]}>{line.vehicleLabel || "-"}</Text>
@@ -206,7 +209,7 @@ export function BillDocument({ data }: { data: BillDocumentData }) {
                   <Text style={[styles.th, { flex: 2, borderRight: 0 }]}>หมายเหตุ</Text>
                 </View>
                 {data.payments.map((p, i) => (
-                  <View style={styles.tr} key={i}>
+                  <View style={i % 2 === 1 ? { ...styles.tr, ...styles.trAlt } : styles.tr} key={i}>
                     <Text style={[styles.td, { flex: 1 }]}>{formatThaiDate(p.payment_date)}</Text>
                     <Text style={[styles.td, { flex: 1.5 }]}>{p.payment_method || "-"}</Text>
                     <Text style={[styles.tdNum, { flex: 1 }]}>{formatNumber(p.amount)}</Text>
