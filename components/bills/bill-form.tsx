@@ -575,6 +575,10 @@ export function BillForm({
                   {...register("adhoc_vendor_tax_id")}
                   placeholder="กรณีผู้ขายขาจรมี VAT แต่ไม่ได้บันทึกเป็นผู้จำหน่ายประจำ"
                 />
+                <p className="mt-1 text-[11px] text-muted-2">
+                  ชื่อผู้ขายใช้ช่อง &quot;ผู้จำหน่าย&quot; ด้านบน — พิมพ์ชื่อจริงของผู้ขายแทนคำว่า
+                  &quot;ทั่วไป&quot; ทั้งเลขผู้เสียภาษีและชื่อนี้จะไปแสดงในรายงานภาษีซื้อและเอกสารที่พิมพ์
+                </p>
               </FormField>
             )}
 
