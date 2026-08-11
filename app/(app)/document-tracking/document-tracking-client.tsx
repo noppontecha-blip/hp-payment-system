@@ -1,7 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { FileCheck2, FileWarning, Wallet } from "lucide-react";
+import { FileCheck2, FileWarning, Wallet, AlertTriangle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,7 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { KpiCard } from "@/components/shared/kpi-card";
-import { StatusBadge, docStatusTone } from "@/components/shared/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { derivePurchaseDocLabel, purchaseDocLabelTone } from "@/lib/utils/document-status";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate } from "@/lib/utils/thai-date";
 import { cn } from "@/lib/utils";
@@ -22,14 +24,24 @@ type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
   const router = useRouter();
 
-  const pending = lines.filter((l) => l.document_type === "ยังไม่มีเอกสาร");
+  const pending = useMemo(() => lines.filter((l) => l.document_type === "ยังไม่มีเอกสาร"), [lines]);
   const received = lines.filter((l) => l.document_type !== "ยังไม่มีเอกสาร");
   const pendingHpCount = new Set(pending.map((l) => l.hp_number)).size;
   const pendingTotal = pending.reduce((sum, l) => sum + l.net_paid_amount, 0);
+  // จ่ายเงินไปแล้วแต่ยังไม่ได้ใบกำกับภาษี — เร่งด่วนกว่ารายการที่ยังไม่ได้จ่ายเงิน เพราะเงินออกไปแล้ว
+  // แต่ยังยื่นภาษีซื้อไม่ได้จนกว่าจะได้ใบกำกับจริง
+  const pendingPaidCount = pending.filter((l) => l.payment_date != null).length;
 
   return (
     <div className="space-y-5 p-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <KpiCard
+          label="จ่ายแล้ว แต่ยังไม่ได้ใบกำกับภาษี"
+          value={`${pendingPaidCount} รายการ`}
+          icon={<AlertTriangle className="size-4" />}
+          accent="danger"
+          trend="เร่งด่วน — เสี่ยงยื่นภาษีซื้อไม่ทัน"
+        />
         <KpiCard
           label="เลข HP ที่ยังตามเอกสารไม่ครบ"
           value={`${pendingHpCount} เลข`}
@@ -72,28 +84,39 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
                   </TableCell>
                 </TableRow>
               )}
-              {lines.map((line) => (
-                <TableRow
-                  key={line.id}
-                  onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
-                  className={cn(
-                    "cursor-pointer hover:bg-[#F5F7FB]",
-                    line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
-                  )}
-                >
-                  <TableCell className="font-mono font-medium">{line.hp_number}</TableCell>
-                  <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
-                  <TableCell>{line.vendor_name_snapshot}</TableCell>
-                  <TableCell className="max-w-56 truncate">{line.description}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(line.net_paid_amount)}</TableCell>
-                  <TableCell>
-                    <StatusBadge label={line.document_type} tone={docStatusTone(line.document_type)} />
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground">
-                    {line.document_number || "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {lines.map((line) => {
+                const docLabel = derivePurchaseDocLabel({
+                  documentType: line.document_type,
+                  expectedDocumentType: line.expected_document_type,
+                });
+                return (
+                  <TableRow
+                    key={line.id}
+                    onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
+                    className={cn(
+                      "cursor-pointer hover:bg-[#F5F7FB]",
+                      line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
+                    )}
+                  >
+                    <TableCell className="font-mono font-medium">{line.hp_number}</TableCell>
+                    <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
+                    <TableCell>{line.vendor_name_snapshot}</TableCell>
+                    <TableCell className="max-w-56 truncate">{line.description}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(line.net_paid_amount)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge label={docLabel} tone={purchaseDocLabelTone(docLabel)} />
+                        {line.document_type === "ยังไม่มีเอกสาร" && line.payment_date != null && (
+                          <StatusBadge label="จ่ายแล้ว" tone="danger" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {line.document_number || "-"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

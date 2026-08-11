@@ -41,6 +41,8 @@ export async function GET(
           vehicleLabel: l.vehicleLabel,
           amountBeforeVat: l.amountBeforeVat,
           vatAmount: l.vatAmount,
+          documentNumber: l.documentNumber,
+          documentInvoiceDate: l.documentInvoiceDate,
         })),
         totals: data.totals,
         requiresWht: data.requiresWht,

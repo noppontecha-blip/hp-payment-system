@@ -35,6 +35,8 @@ export type ExpenseDocumentData = {
     amountBeforeVat: number;
     vatAmount: number;
     whtAmount: number;
+    documentNumber: string | null;
+    documentInvoiceDate: string | null;
   }[];
   totals: { beforeVat: number; vat: number; wht: number; net: number };
   requiresWht: boolean;
@@ -77,10 +79,14 @@ export async function fetchExpenseDocumentData(
   const wht = lines.reduce((sum, l) => sum + (l.wht_amount || 0), 0);
   const net = lines.reduce((sum, l) => sum + (l.net_paid_amount || 0), 0);
 
+  // เลขที่เอกสารเป็นต่อรายการย่อยแล้ว (1 HP อาจมีใบกำกับภาษีหลายใบ เช่น ประกันภัยแยกตามรถแต่ละคัน) —
+  // อ้างอิงบนหัวเอกสารเป็นสรุปเลขที่ทั้งหมดที่ไม่ซ้ำกัน ส่วนรายละเอียดครบถ้วนต่อใบอยู่ในตารางรายการ
+  const distinctDocNumbers = Array.from(new Set(lines.map((l) => l.document_number).filter(Boolean)));
+
   return {
     hpNumber,
     transactionDate: first.transaction_date,
-    documentNumber: first.document_number,
+    documentNumber: distinctDocNumbers.length > 0 ? distinctDocNumbers.join(", ") : null,
     company: {
       company_name: company?.company_name ?? "-",
       tax_id: company?.tax_id ?? null,
@@ -92,7 +98,8 @@ export async function fetchExpenseDocumentData(
     vendor: {
       name: first.vendor_name_snapshot,
       code: vendor?.code ?? null,
-      tax_id: vendor?.tax_id ?? null,
+      // ผู้ขายขาจร (V9999) ไม่มีเลขผู้เสียภาษีประจำ — ใช้เลขที่ระบุเองต่อเอกสารแทนถ้ามี
+      tax_id: vendor?.tax_id ?? first.adhoc_vendor_tax_id ?? null,
       address: vendor?.registered_address ?? vendor?.mailing_address ?? null,
       contact_phone: vendor?.contact_phone ?? null,
       contact_name: vendor?.contact_name ?? null,
@@ -110,6 +117,8 @@ export async function fetchExpenseDocumentData(
         amountBeforeVat: l.amount_before_vat,
         vatAmount: l.vat_amount,
         whtAmount: l.wht_amount ?? 0,
+        documentNumber: l.document_number,
+        documentInvoiceDate: l.document_invoice_date,
       };
     }),
     totals: { beforeVat, vat, wht, net },

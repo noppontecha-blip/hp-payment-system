@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
     color: BLUE,
   },
   td: { padding: 4, borderRight: `1pt solid ${BLUE_BORDER}` },
+  tdSub: { color: "#6b7280", fontSize: 8.5, marginTop: 1 },
   tdNum: { padding: 4, borderRight: `1pt solid ${BLUE_BORDER}`, textAlign: "right" },
   totalsBox: { marginTop: 8, alignSelf: "flex-end", width: 220 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
@@ -92,6 +93,8 @@ export type BillDocumentData = {
     vehicleLabel: string;
     amountBeforeVat: number;
     vatAmount: number;
+    documentNumber: string | null;
+    documentInvoiceDate: string | null;
   }[];
   totals: { beforeVat: number; vat: number; wht: number; net: number };
   requiresWht: boolean;
@@ -167,7 +170,15 @@ export function BillDocument({ data }: { data: BillDocumentData }) {
           </View>
           {data.lines.map((line, i) => (
             <View style={i % 2 === 1 ? { ...styles.tr, ...styles.trAlt } : styles.tr} key={i}>
-              <Text style={[styles.td, { flex: 3 }]}>{line.description}</Text>
+              <View style={[styles.td, { flex: 3 }]}>
+                <Text>{line.description}</Text>
+                {(line.documentNumber || line.documentInvoiceDate) && (
+                  <Text style={styles.tdSub}>
+                    เลขที่ใบกำกับ: {line.documentNumber || "-"}
+                    {line.documentInvoiceDate ? ` · วันที่: ${formatThaiDate(line.documentInvoiceDate)}` : ""}
+                  </Text>
+                )}
+              </View>
               <Text style={[styles.td, { flex: 2 }]}>{line.accountLabel || "-"}</Text>
               <Text style={[styles.td, { flex: 2 }]}>{line.vehicleLabel || "-"}</Text>
               <Text style={[styles.tdNum, { flex: 1.5 }]}>{formatNumber(line.amountBeforeVat)}</Text>

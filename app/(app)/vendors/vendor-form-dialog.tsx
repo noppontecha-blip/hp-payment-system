@@ -59,6 +59,7 @@ const emptyValues: VendorFormValues = {
   code: "",
   name: "",
   vendor_type: null,
+  vat_registered: true,
   tax_id: "",
   default_account_code_id: "",
   payment_method: null,
@@ -113,6 +114,7 @@ export function VendorFormDialog({
           code: vendor.code,
           name: vendor.name,
           vendor_type: vendor.vendor_type ?? null,
+          vat_registered: vendor.vat_registered,
           tax_id: vendor.tax_id ?? "",
           default_account_code_id: vendor.default_account_code_id ?? "",
           payment_method: (vendor.payment_method as "สด" | "โอน" | null) ?? null,
@@ -296,6 +298,24 @@ export function VendorFormDialog({
                     </Select>
                   )}
                 />
+              </FormField>
+              <FormField label=" ">
+                <div className="flex h-9 items-center gap-2">
+                  <Controller
+                    control={control}
+                    name="vat_registered"
+                    render={({ field }) => (
+                      <Checkbox
+                        id="vat-registered"
+                        checked={field.value}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                      />
+                    )}
+                  />
+                  <Label htmlFor="vat-registered" className="cursor-pointer font-normal">
+                    ผู้จำหน่ายจดทะเบียน VAT
+                  </Label>
+                </div>
               </FormField>
               <FormField label="ชื่อผู้จำหน่าย" required error={errors.name?.message}>
                 <Input

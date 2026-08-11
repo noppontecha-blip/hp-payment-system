@@ -5,6 +5,7 @@ export const vendorSchema = z
     code: z.string().min(1, "กรุณากรอกรหัสผู้จำหน่าย"),
     name: z.string().min(1, "กรุณากรอกชื่อผู้จำหน่าย"),
     vendor_type: z.enum(["นิติบุคคล", "บุคคลธรรมดา"]).optional().nullable(),
+    vat_registered: z.boolean().default(true),
     tax_id: z.string().optional().nullable(),
     default_account_code_id: z.string().uuid("กรุณาเลือกบัญชีที่มักใช้"),
     payment_method: z.enum(["สด", "โอน"]).optional().nullable(),

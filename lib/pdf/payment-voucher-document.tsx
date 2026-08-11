@@ -160,6 +160,12 @@ export function PaymentVoucherDocument({ data }: { data: ExpenseDocumentData }) 
               <View style={[styles.td, { flex: 3 }]}>
                 <Text>{line.accountCode || "-"}</Text>
                 <Text style={styles.tdSub}>{line.description}</Text>
+                {(line.documentNumber || line.documentInvoiceDate) && (
+                  <Text style={styles.tdSub}>
+                    เลขที่ใบกำกับ: {line.documentNumber || "-"}
+                    {line.documentInvoiceDate ? ` · วันที่: ${formatThaiDate(line.documentInvoiceDate)}` : ""}
+                  </Text>
+                )}
               </View>
               <Text style={[styles.tdNum, { flex: 1 }]}>{formatNumber(line.quantity)}</Text>
               <Text style={[styles.tdNum, { flex: 1.2 }]}>{formatNumber(line.unitPrice)}</Text>

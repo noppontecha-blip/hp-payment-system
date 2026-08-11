@@ -31,6 +31,7 @@ export type Database = {
           mailing_address: string | null;
           tax_id: string | null;
           vendor_type: "นิติบุคคล" | "บุคคลธรรมดา" | null;
+          vat_registered: boolean;
           registered_address: string | null;
           id_document_path: string | null;
           created_at: string;
@@ -129,6 +130,10 @@ export type Database = {
           document_type: "ใบกำกับภาษี" | "บิลเงินสด" | "ยังไม่มีเอกสาร";
           document_number: string | null;
           document_invoice_date: string | null;
+          document_received_date: string | null;
+          expected_document_type: "ใบกำกับภาษี" | "บิลเงินสด" | null;
+          adhoc_vendor_tax_id: string | null;
+          vat_non_claimable: boolean;
           vendor_id: string | null;
           vendor_name_snapshot: string;
           description: string;

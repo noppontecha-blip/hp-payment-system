@@ -32,6 +32,13 @@ const hpLineItemBase = z.object({
   wht_issue_date: z.string().nullable().optional(),
   wht_pnd_form: z.enum(["ภ.ง.ด.3", "ภ.ง.ด.53"]).nullable().optional(),
   net_paid_amount: z.coerce.number(),
+  // เลขที่/วันที่ในใบกำกับภาษีของรายการนี้โดยเฉพาะ — เป็นต่อรายการย่อย (ไม่ใช่ทั้งเอกสาร) เพราะ 1 HP
+  // อาจมีใบกำกับภาษีหลายใบ เช่น จ่ายค่าประกันภัยทีเดียวแต่มีใบกำกับแยกตามรถแต่ละคัน
+  document_number: z.string().nullable().optional(),
+  document_invoice_date: z.string().nullable().optional(),
+  // ภาษีซื้อต้องห้าม — มี VAT จ่ายจริงแต่เคลมเป็นภาษีซื้อไม่ได้ตามกฎหมาย (เช่น ค่ารับรอง) ต้องไม่ปน
+  // เข้ารายงานภาษีซื้อที่ยื่นสรรพากร แม้จะยังบันทึกเป็นค่าใช้จ่ายตามปกติ
+  vat_non_claimable: z.boolean().default(false),
 });
 
 export const hpLineItemSchema = hpLineItemBase.superRefine((line, ctx) => {
@@ -89,9 +96,15 @@ const hpBillHeaderFields = {
   document_type: z
     .enum(["ใบกำกับภาษี", "บิลเงินสด", "ยังไม่มีเอกสาร"])
     .default("ยังไม่มีเอกสาร"),
-  document_number: z.string().nullable().optional(),
-  // ใช้ทำรายงานภาษีซื้อ — มีค่าเฉพาะตอน document_type = "ใบกำกับภาษี"
-  document_invoice_date: z.string().nullable().optional(),
+  // วันที่ได้รับใบกำกับภาษีจริง (แยกจากวันที่พิมพ์บนใบกำกับซึ่งอยู่ระดับรายการย่อยแล้ว) — รายงานภาษีซื้อ
+  // ยึดเดือนนี้เป็นหลัก เพราะใบกำกับมักมาถึงช้ากว่าวันที่ในใบกำกับ/วันที่จ่ายเงิน
+  document_received_date: z.string().nullable().optional(),
+  // ประเภทเอกสารที่คาดว่าจะได้รับ — บันทึกได้ตั้งแต่ตอนยังไม่ได้รับเอกสารจริง (document_type ยังเป็น
+  // "ยังไม่มีเอกสาร") เพื่อแยกสถานะ "ขาดใบกำกับภาษี" กับ "ขาดใบเสร็จรับเงิน" ในหน้าสถานะเอกสารซื้อ
+  expected_document_type: z.enum(["ใบกำกับภาษี", "บิลเงินสด"]).nullable().optional(),
+  // เลขผู้เสียภาษีของผู้ขายที่ระบุเอง — ใช้เฉพาะตอนเลือกผู้จำหน่าย "ทั่วไป" (ขาจร ไม่มีรหัสประจำ)
+  // แต่ผู้ขายรายนั้นมี VAT จริง
+  adhoc_vendor_tax_id: z.string().nullable().optional(),
   // วิธีการจ่ายเงิน — จ่ายผ่านบัญชีธนาคารบริษัทฯ หรือมีคนสำรองจ่ายไปก่อน
   payment_method: z.enum(["บัญชีธนาคารบริษัท", "สำรองจ่าย"]).nullable().optional(),
   payment_date: z.string().nullable().optional(),

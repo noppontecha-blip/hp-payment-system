@@ -4,6 +4,8 @@ import { Controller, useWatch, type Control, type UseFormSetValue } from "react-
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CurrencyInput } from "@/components/shared/currency-input";
+import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { formatCurrency } from "@/lib/utils/format";
 import type { HpBillFormValues } from "@/lib/validations/hp-line";
 import type { Database } from "@/lib/types/database";
@@ -37,6 +40,8 @@ export function LineItemRow({
   accounts,
   vehicles,
   assetCategories,
+  documentType,
+  vatEnabled,
   onRemove,
   removable,
 }: {
@@ -46,6 +51,8 @@ export function LineItemRow({
   accounts: Account[];
   vehicles: Vehicle[];
   assetCategories: AssetCategory[];
+  documentType: HpBillFormValues["document_type"];
+  vatEnabled: boolean;
   onRemove: () => void;
   removable: boolean;
 }) {
@@ -286,6 +293,52 @@ export function LineItemRow({
                   )}
                 />
               </>
+            )}
+
+            {documentType !== "ยังไม่มีเอกสาร" && (
+              <Controller
+                control={control}
+                name={`${path}.document_number`}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="เลขที่เอกสารรายการนี้"
+                    className="h-7 w-40 bg-background text-xs"
+                  />
+                )}
+              />
+            )}
+            {documentType === "ใบกำกับภาษี" && (
+              <Controller
+                control={control}
+                name={`${path}.document_invoice_date`}
+                render={({ field }) => (
+                  <ThaiDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    className="h-7 w-28 bg-background text-xs"
+                  />
+                )}
+              />
+            )}
+            {vatEnabled && (
+              <div className="flex items-center gap-1.5">
+                <Controller
+                  control={control}
+                  name={`${path}.vat_non_claimable`}
+                  render={({ field }) => (
+                    <Checkbox
+                      id={`vat-non-claimable-${index}`}
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                  )}
+                />
+                <Label htmlFor={`vat-non-claimable-${index}`} className="cursor-pointer text-xs font-normal">
+                  ภาษีซื้อต้องห้าม
+                </Label>
+              </div>
             )}
           </div>
         </td>

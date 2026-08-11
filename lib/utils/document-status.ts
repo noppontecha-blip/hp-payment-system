@@ -41,3 +41,24 @@ export function documentStatusTone(status: DocumentStatus): "success" | "info" |
       return "success";
   }
 }
+
+export type PurchaseDocLabel = "ขาดใบกำกับภาษี" | "ขาดใบเสร็จรับเงิน" | "ขาดเอกสาร" | "เอกสารครบแล้ว";
+
+// สถานะเอกสารซื้อ 3 แบบที่หน้าติดตามใช้แสดง — ต่างจาก deriveDocumentStatus ข้างบนซึ่งเป็นสถานะรวม
+// ทั้งบิล (รวมการจ่ายเงิน/ยกเลิกด้วย) อันนี้สนใจแค่แง่มุมเดียวคือเอกสารซื้อขาด/ครบ
+export function derivePurchaseDocLabel({
+  documentType,
+  expectedDocumentType,
+}: {
+  documentType: string;
+  expectedDocumentType: string | null;
+}): PurchaseDocLabel {
+  if (documentType !== "ยังไม่มีเอกสาร") return "เอกสารครบแล้ว";
+  if (expectedDocumentType === "ใบกำกับภาษี") return "ขาดใบกำกับภาษี";
+  if (expectedDocumentType === "บิลเงินสด") return "ขาดใบเสร็จรับเงิน";
+  return "ขาดเอกสาร";
+}
+
+export function purchaseDocLabelTone(label: PurchaseDocLabel): "success" | "info" | "warn" | "danger" {
+  return label === "เอกสารครบแล้ว" ? "success" : "warn";
+}

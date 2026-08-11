@@ -8,33 +8,36 @@ export async function GET(request: Request) {
   const month = searchParams.get("month");
 
   const supabase = await createClient();
-  let query = supabase
+  const { data: allLines, error } = await supabase
     .from("hp_payment_lines")
     .select("*")
     .eq("document_type", "ใบกำกับภาษี")
     .not("document_invoice_date", "is", null)
+    .eq("vat_non_claimable", false)
     .order("hp_number", { ascending: true });
-
-  if (year) {
-    const y = Number(year);
-    query = query.gte("document_invoice_date", `${y}-01-01`).lte("document_invoice_date", `${y}-12-31`);
-  }
-
-  const { data: allLines, error } = await query;
   if (error) return new Response(error.message, { status: 500 });
 
-  // document_invoice_date is a `date` column — PostgREST/Postgres has no LIKE operator for it,
-  // so filter by month client-side on the "YYYY-MM-DD" string instead of pushing it to the query.
+  // เดือนที่ยื่นภาษีซื้อจริงยึดวันที่ได้รับใบกำกับภาษี (document_received_date) ถ้ามีการบันทึกไว้ —
+  // เพราะใบกำกับมักมาถึงช้ากว่าวันที่พิมพ์บนใบกำกับ — ไม่งั้น fallback ไปใช้ document_invoice_date
+  // เหมือนเดิม (รายการเก่าที่ยังไม่เคยบันทึกวันที่ได้รับ). ทั้งสองเป็นคอลัมน์ `date` ธรรมดา — Postgres/
+  // PostgREST ไม่มี LIKE สำหรับ date เลยกรองปี/เดือนฝั่ง client จาก string "YYYY-MM-DD" แทน
+  const filingDate = (l: (typeof allLines)[number]) => l.document_received_date ?? l.document_invoice_date;
+  const yearStr = year ? year : null;
   const monthStr = month ? String(Number(month)).padStart(2, "0") : null;
-  const lines = monthStr
-    ? (allLines ?? []).filter((l) => l.document_invoice_date?.slice(5, 7) === monthStr)
-    : (allLines ?? []);
+  const lines = (allLines ?? []).filter((l) => {
+    const d = filingDate(l);
+    if (!d) return false;
+    if (yearStr && d.slice(0, 4) !== yearStr) return false;
+    if (monthStr && d.slice(5, 7) !== monthStr) return false;
+    return true;
+  });
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("รายงานภาษีซื้อ");
   sheet.columns = [
     { header: "เลข HP", key: "hp_number", width: 14 },
     { header: "วันที่ใบกำกับภาษี", key: "date", width: 16 },
+    { header: "วันที่ได้รับ", key: "received_date", width: 16 },
     { header: "เลขที่เอกสาร", key: "document_number", width: 18 },
     { header: "ผู้จำหน่าย", key: "vendor", width: 30 },
     { header: "ก่อน VAT", key: "amount_before_vat", width: 14 },
@@ -50,6 +53,7 @@ export async function GET(request: Request) {
     sheet.addRow({
       hp_number: l.hp_number,
       date: formatThaiDate(l.document_invoice_date),
+      received_date: l.document_received_date ? formatThaiDate(l.document_received_date) : "-",
       document_number: l.document_number ?? "",
       vendor: l.vendor_name_snapshot,
       amount_before_vat: l.amount_before_vat,
@@ -62,6 +66,7 @@ export async function GET(request: Request) {
   const totalRow = sheet.addRow({
     hp_number: "",
     date: "",
+    received_date: "",
     document_number: "",
     vendor: "ยอดรวม",
     amount_before_vat: totalBeforeVat,

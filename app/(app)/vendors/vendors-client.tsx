@@ -41,6 +41,7 @@ export function VendorsClient({
     { key: "payment_method", header: "วิธีชำระเงิน", render: (v) => v.payment_method ?? "-" },
     { key: "bank_account", header: "เลขบัญชี", render: (v) => v.bank_account ?? "-" },
     { key: "tax_id", header: "เลขผู้เสียภาษี", render: (v) => v.tax_id ?? "-" },
+    { key: "vat_registered", header: "VAT", render: (v) => (v.vat_registered ? "จด VAT" : "-") },
   ];
 
   async function handleDelete(vendor: Vendor) {

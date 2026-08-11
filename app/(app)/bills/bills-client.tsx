@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronDown, Download, Plus, Search } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,12 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -43,9 +37,8 @@ type BillPayment = Database["public"]["Tables"]["bill_payments"]["Row"];
 
 const ALL = "__all__";
 
-// Category tabs mirror the "บันทึกรายจ่ายใหม่" categories the create-menu links to
-// (?category= slugs match app/(app)/bills/new/page.tsx's CATEGORY_DEFAULTS) — this page is now
-// the single hub for both browsing and creating bills per category, so the two no longer duplicate.
+// Category tabs filter the list by หมวดรายจ่าย — creating a new bill no longer pre-selects a
+// category up front (each line item picks its own category inside the form instead).
 const CATEGORIES: { key: string; label: string; expenseGroup: Line["expense_group"] | null }[] = [
   { key: "all", label: "ทั้งหมด", expenseGroup: null },
   { key: "vehicle-cost", label: "ต้นทุนรายคัน", expenseGroup: "ต้นทุนรายคัน" },
@@ -284,24 +277,10 @@ export function BillsClient({
             <Download className="size-4" />
             ส่งออก Excel
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button />}>
-              <Plus className="size-4" />
-              สร้างเอกสาร
-              <ChevronDown className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push("/bills/new?category=vehicle-cost")}>
-                ต้นทุนรายคัน
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/bills/new?category=sga")}>
-                ค่าใช้จ่ายขายและบริหาร
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/bills/new?category=asset")}>
-                สินทรัพย์
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button onClick={() => router.push("/bills/new")}>
+            <Plus className="size-4" />
+            สร้างเอกสาร
+          </Button>
         </div>
       </div>
 

@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { FilterField, filterTriggerClassName } from "@/components/shared/filter-field";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate, parseISODate, toBEYear } from "@/lib/utils/thai-date";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,24 @@ import type { Database } from "@/lib/types/database";
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 
 const ALL = "__all__";
+
+// เดือนที่ยื่นภาษีซื้อจริง — ยึดวันที่ได้รับใบกำกับภาษี ถ้ามีการบันทึกไว้ (เพราะใบกำกับมักมาถึงช้ากว่า
+// วันที่พิมพ์บนใบกำกับ) ไม่งั้น fallback ไปใช้วันที่ในใบกำกับภาษีเหมือนเดิม (รายการเก่าที่ยังไม่เคย
+// บันทึกวันที่ได้รับ)
+function filingDate(line: Line): string {
+  return line.document_received_date ?? (line.document_invoice_date as string);
+}
+
+const SIX_MONTHS_MS = 183 * 24 * 60 * 60 * 1000;
+
+// สรรพากรให้เคลมภาษีซื้อย้อนหลังได้ไม่เกิน 6 เดือนนับจากวันที่ในใบกำกับภาษี — เตือนถ้าเดือนที่ยื่นจริง
+// (วันที่ได้รับ) ห่างจากวันที่ในใบกำกับเกินกำหนดนี้
+function isPastSixMonths(line: Line): boolean {
+  if (!line.document_received_date || !line.document_invoice_date) return false;
+  const invoice = parseISODate(line.document_invoice_date).getTime();
+  const received = parseISODate(line.document_received_date).getTime();
+  return received - invoice > SIX_MONTHS_MS;
+}
 const THAI_MONTHS = [
   "มกราคม",
   "กุมภาพันธ์",
@@ -49,14 +68,14 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
   const [month, setMonth] = useState(String(now.getMonth() + 1));
 
   const years = useMemo(() => {
-    const set = new Set(lines.map((l) => parseISODate(l.document_invoice_date as string).getFullYear()));
+    const set = new Set(lines.map((l) => parseISODate(filingDate(l)).getFullYear()));
     set.add(now.getFullYear());
     return Array.from(set).sort((a, b) => b - a);
   }, [lines, now]);
 
   const filtered = useMemo(() => {
     return lines.filter((l) => {
-      const d = parseISODate(l.document_invoice_date as string);
+      const d = parseISODate(filingDate(l));
       if (year !== ALL && d.getFullYear() !== Number(year)) return false;
       if (month !== ALL && d.getMonth() + 1 !== Number(month)) return false;
       return true;
@@ -129,6 +148,7 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
               <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
                 <TableHead>เลข HP</TableHead>
                 <TableHead>วันที่ใบกำกับภาษี</TableHead>
+                <TableHead>วันที่ได้รับ</TableHead>
                 <TableHead>เลขที่เอกสาร</TableHead>
                 <TableHead>ผู้จำหน่าย</TableHead>
                 <TableHead className="text-right">ก่อน VAT</TableHead>
@@ -139,7 +159,7 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-2">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-2">
                     ไม่พบรายการที่ตรงกับเงื่อนไข
                   </TableCell>
                 </TableRow>
@@ -149,6 +169,12 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
                   <TableCell className="font-mono">{line.hp_number}</TableCell>
                   <TableCell className="font-mono">
                     {formatThaiDate(line.document_invoice_date)}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    <div className="flex items-center gap-1.5">
+                      {line.document_received_date ? formatThaiDate(line.document_received_date) : "-"}
+                      {isPastSixMonths(line) && <StatusBadge label="เกิน 6 เดือน" tone="danger" />}
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {line.document_number || "-"}
@@ -167,7 +193,7 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
             {filtered.length > 0 && (
               <TableFooter>
                 <TableRow className="font-semibold text-ink">
-                  <TableCell colSpan={4}>ยอดรวม</TableCell>
+                  <TableCell colSpan={5}>ยอดรวม</TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(totals.beforeVat)}</TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(totals.vat)}</TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(totals.total)}</TableCell>

@@ -83,6 +83,9 @@ function emptyLine(
     wht_amount: null,
     wht_pnd_form: null,
     net_paid_amount: 0,
+    document_number: "",
+    document_invoice_date: null,
+    vat_non_claimable: false,
   };
 }
 
@@ -135,8 +138,9 @@ export function BillForm({
     vendor_id: null,
     vendor_name_snapshot: "",
     document_type: "ยังไม่มีเอกสาร",
-    document_number: "",
-    document_invoice_date: null,
+    document_received_date: null,
+    expected_document_type: null,
+    adhoc_vendor_tax_id: "",
     payment_method: null,
     payment_date: null,
     slip_path: null,
@@ -483,7 +487,13 @@ export function BillForm({
                   if (v === "pending") {
                     setValue("document_type", "ยังไม่มีเอกสาร");
                   } else {
-                    setValue("document_type", "ใบกำกับภาษี");
+                    // ยังไม่มีการระบุประเภทที่คาดไว้ตอนเป็น pending — ใช้ใบกำกับภาษีเป็นค่าเริ่มต้น
+                    setValue("document_type", getValues("expected_document_type") ?? "ใบกำกับภาษี");
+                    // เพิ่งเปลี่ยนจาก "ยังไม่ได้รับ" เป็น "ได้รับแล้ว" — ตั้งวันที่ได้รับเป็นวันนี้
+                    // ให้อัตโนมัติ (แก้ไขเองได้ถ้าจริง ๆ ได้รับมาก่อนหน้านี้แล้วเพิ่งมาบันทึก)
+                    if (!getValues("document_received_date")) {
+                      setValue("document_received_date", toISODateString(new Date()));
+                    }
                   }
                 }}
               >
@@ -499,40 +509,72 @@ export function BillForm({
               </Select>
             </FormField>
 
+            {documentType === "ยังไม่มีเอกสาร" && (
+              <Controller
+                control={control}
+                name="expected_document_type"
+                render={({ field }) => (
+                  <FormField label="ประเภทเอกสารที่คาดว่าจะได้รับ">
+                    <Select
+                      value={field.value ?? NONE}
+                      onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value: string) => (value === NONE ? "ยังไม่ทราบ" : value)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>ยังไม่ทราบ</SelectItem>
+                        <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
+                        <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+              />
+            )}
+
             {documentType !== "ยังไม่มีเอกสาร" && (
-              <>
-                <Controller
-                  control={control}
-                  name="document_type"
-                  render={({ field }) => (
-                    <FormField label="ประเภทเอกสาร">
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
-                          <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormField>
-                  )}
-                />
-                <FormField label="เลขที่เอกสาร">
-                  <Input {...register("document_number")} placeholder="ไม่จำเป็นต้องกรอกก็ได้" />
-                </FormField>
-              </>
+              <Controller
+                control={control}
+                name="document_type"
+                render={({ field }) => (
+                  <FormField label="ประเภทเอกสาร">
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ใบกำกับภาษี">ใบกำกับภาษี</SelectItem>
+                        <SelectItem value="บิลเงินสด">บิลเงินสด</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+              />
             )}
             {documentType === "ใบกำกับภาษี" && (
               <Controller
                 control={control}
-                name="document_invoice_date"
+                name="document_received_date"
                 render={({ field }) => (
-                  <FormField label="วันที่ในใบกำกับภาษี">
+                  <FormField label="วันที่ได้รับใบกำกับภาษีจริง">
                     <ThaiDatePicker value={field.value} onChange={field.onChange} />
+                    <p className="text-[11px] text-muted-2">
+                      ใช้ตัดสินว่ายื่นภาษีซื้อเดือนไหน ถ้าได้รับช้ากว่าวันที่ในใบกำกับ
+                    </p>
                   </FormField>
                 )}
               />
+            )}
+            {selectedVendor?.code === "V9999" && vatEnabled && (
+              <FormField label="เลขผู้เสียภาษีผู้ขาย (ระบุเอง)">
+                <Input
+                  {...register("adhoc_vendor_tax_id")}
+                  placeholder="กรณีผู้ขายขาจรมี VAT แต่ไม่ได้บันทึกเป็นผู้จำหน่ายประจำ"
+                />
+              </FormField>
             )}
 
             {workType === "สร้างสินทรัพย์" && (
@@ -585,6 +627,8 @@ export function BillForm({
                     accounts={expenseAccounts}
                     vehicles={vehicles}
                     assetCategories={assetCategories}
+                    documentType={documentType}
+                    vatEnabled={vatEnabled}
                     onRemove={() => remove(index)}
                     removable={fields.length > 1}
                   />

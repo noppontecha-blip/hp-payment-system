@@ -45,8 +45,9 @@ export default async function EditBillPage({
     vendor_id: first.vendor_id,
     vendor_name_snapshot: first.vendor_name_snapshot,
     document_type: first.document_type,
-    document_number: first.document_number,
-    document_invoice_date: first.document_invoice_date,
+    document_received_date: first.document_received_date,
+    expected_document_type: first.expected_document_type,
+    adhoc_vendor_tax_id: first.adhoc_vendor_tax_id,
     payment_method: first.payment_method,
     payment_date: first.payment_date,
     slip_path: first.slip_path,
@@ -79,6 +80,9 @@ export default async function EditBillPage({
       wht_amount: row.wht_amount,
       wht_pnd_form: row.wht_pnd_form,
       net_paid_amount: row.net_paid_amount,
+      document_number: row.document_number,
+      document_invoice_date: row.document_invoice_date,
+      vat_non_claimable: row.vat_non_claimable,
     })),
   };
 
