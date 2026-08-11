@@ -21,6 +21,17 @@ export function registerThaiFont() {
   // its box/page instead of wrapping, which is exactly what showed up as "missing" text. Splitting
   // Thai runs into individual characters gives the layout engine a break point wherever needed.
   // English/numeric text is left untouched so it keeps wrapping at normal word boundaries.
-  Font.registerHyphenationCallback((word) => (/[฀-๿]/.test(word) ? word.split("") : [word]));
+  //
+  // Separately, this font/renderer combo also silently drops the true LAST character of a Thai
+  // run in some cases — even on a single line with no wrapping involved (e.g. "ใบสำคัญจ่าย" renders
+  // as "ใบสำคัญจ่า", missing the final ย) — confirmed via standalone tests to be a pre-existing
+  // width-measurement edge case in the PDF layout engine, unrelated to the callback above. Any
+  // trailing character after the true last glyph works around it; appending an invisible
+  // zero-width space after every Thai segment is a safe no-op when the bug doesn't trigger and a
+  // fix when it does, without touching the ~150 individual text nodes across the print documents.
+  const ZWSP = "​";
+  Font.registerHyphenationCallback((word) =>
+    /[฀-๿]/.test(word) ? [...word.split(""), ZWSP] : [word],
+  );
   registered = true;
 }

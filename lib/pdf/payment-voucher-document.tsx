@@ -195,7 +195,7 @@ export function PaymentVoucherDocument({ data }: { data: ExpenseDocumentData }) 
         <Text style={styles.bahtLine}>({bahtText(data.totals.net)})</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ช่องทางชำระเงิน</Text>
+          <Text style={styles.sectionTitle}>ช่องทางการชำระเงิน</Text>
           <View style={styles.row}>
             <Text style={styles.label}>วิธีจ่าย</Text>
             <Text style={styles.value}>{data.headerPaymentMethod || "ยังไม่ระบุ"}</Text>
