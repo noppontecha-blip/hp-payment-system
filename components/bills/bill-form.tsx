@@ -174,6 +174,7 @@ export function BillForm({
   const vendorId = watch("vendor_id");
   const vendorName = watch("vendor_name_snapshot");
   const documentType = watch("document_type");
+  const adhocVendorTaxId = watch("adhoc_vendor_tax_id");
   const paymentMethod = watch("payment_method");
   const slipPath = watch("slip_path");
   const slipOcrAmount = watch("slip_ocr_amount");
@@ -629,6 +630,9 @@ export function BillForm({
                     assetCategories={assetCategories}
                     documentType={documentType}
                     vatEnabled={vatEnabled}
+                    hpNumber={currentHpNumber}
+                    vendorId={vendorId ?? null}
+                    adhocVendorTaxId={adhocVendorTaxId ?? null}
                     onRemove={() => remove(index)}
                     removable={fields.length > 1}
                   />

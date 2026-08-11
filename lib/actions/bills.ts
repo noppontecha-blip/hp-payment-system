@@ -30,6 +30,36 @@ async function generateHpNumber(
   return data as unknown as string;
 }
 
+// เลขที่ใบกำกับภาษีซื้อห้ามซ้ำกับที่เคยบันทึกไว้แล้วของผู้จำหน่ายรายเดียวกัน (ไม่นับเอกสารนี้เอง หรือ
+// เอกสารที่ยกเลิกแล้ว) — ป้องกันเคสยื่นภาษีซื้อซ้ำเดือนแล้วโดนเบี้ยปรับ. เทียบตาม vendor_id ถ้าเป็น
+// ผู้จำหน่ายจริง หรือ adhoc_vendor_tax_id ถ้าเป็นผู้จำหน่าย "ทั่วไป" (V9999) — ไม่มีทั้งคู่แปลว่าไม่มี
+// ตัวตนผู้ขายให้เทียบ ข้ามการตรวจสอบ
+export async function checkDuplicateInvoiceNumber(params: {
+  documentNumber: string;
+  vendorId: string | null;
+  adhocVendorTaxId: string | null;
+  excludeHpNumber: string;
+}): Promise<{ duplicate: boolean; hpNumber: string | null }> {
+  if (!params.vendorId && !params.adhocVendorTaxId) return { duplicate: false, hpNumber: null };
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("hp_payment_lines")
+    .select("hp_number")
+    .eq("document_number", params.documentNumber)
+    .eq("document_type", "ใบกำกับภาษี")
+    .eq("is_cancelled", false)
+    .neq("hp_number", params.excludeHpNumber)
+    .limit(1);
+  query = params.vendorId
+    ? query.eq("vendor_id", params.vendorId)
+    : query.eq("adhoc_vendor_tax_id", params.adhocVendorTaxId as string);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return { duplicate: (data?.length ?? 0) > 0, hpNumber: data?.[0]?.hp_number ?? null };
+}
+
 export async function saveHpBill(
   input: HpBillFormValues,
   saveMode: "draft" | "final",
@@ -46,6 +76,27 @@ export async function saveHpBill(
   // visiting /bills/new (see peekHpNumber, used for display before this point).
   if (isNewDocument) {
     header.hp_number = await generateHpNumber(supabase, header.transaction_date);
+  }
+
+  // ตรวจสอบเลขที่ใบกำกับภาษีซื้อซ้ำก่อนบันทึกจริง — บล็อกการบันทึกถ้าซ้ำ (ทั้งบันทึกร่างและบันทึกจริง
+  // เพราะทั้งคู่เขียนลงตารางจริงเหมือนกัน) รวบเลขที่ที่ไม่ซ้ำกันก่อนเพื่อไม่ต้อง query ซ้ำต่อบรรทัด
+  if (header.document_type === "ใบกำกับภาษี") {
+    const documentNumbers = Array.from(
+      new Set(lines.map((l) => l.document_number).filter((n): n is string => !!n)),
+    );
+    for (const documentNumber of documentNumbers) {
+      const dup = await checkDuplicateInvoiceNumber({
+        documentNumber,
+        vendorId: header.vendor_id ?? null,
+        adhocVendorTaxId: header.adhoc_vendor_tax_id ?? null,
+        excludeHpNumber: header.hp_number,
+      });
+      if (dup.duplicate) {
+        throw new Error(
+          `เลขที่ใบกำกับภาษี "${documentNumber}" ซ้ำกับเอกสาร ${dup.hpNumber} ที่บันทึกไว้แล้ว (ผู้จำหน่ายเดียวกัน) — กรุณาตรวจสอบก่อนบันทึก เพื่อป้องกันการยื่นภาษีซื้อซ้ำ`,
+        );
+      }
+    }
   }
 
   const { data: existingRows, error: existingError } = await supabase

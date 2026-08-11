@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Controller, useWatch, type Control, type UseFormSetValue } from "react-hook-form";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +17,7 @@ import {
 import { CurrencyInput } from "@/components/shared/currency-input";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { formatCurrency } from "@/lib/utils/format";
+import { checkDuplicateInvoiceNumber } from "@/lib/actions/bills";
 import type { HpBillFormValues } from "@/lib/validations/hp-line";
 import type { Database } from "@/lib/types/database";
 
@@ -42,6 +44,9 @@ export function LineItemRow({
   assetCategories,
   documentType,
   vatEnabled,
+  hpNumber,
+  vendorId,
+  adhocVendorTaxId,
   onRemove,
   removable,
 }: {
@@ -53,6 +58,9 @@ export function LineItemRow({
   assetCategories: AssetCategory[];
   documentType: HpBillFormValues["document_type"];
   vatEnabled: boolean;
+  hpNumber: string;
+  vendorId: string | null;
+  adhocVendorTaxId: string | null;
   onRemove: () => void;
   removable: boolean;
 }) {
@@ -63,9 +71,36 @@ export function LineItemRow({
   const unitPrice = useWatch({ control, name: `${path}.unit_price` });
   const total = useWatch({ control, name: `${path}.amount_before_vat` });
   const vehicleRequired = expenseGroup === "ต้นทุนรายคัน" && costSubtype === "อะไหล่ซ่อม/สต๊อก";
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   function recomputeTotal(nextQuantity: number, nextUnitPrice: number) {
     setValue(`${path}.amount_before_vat`, round2(nextQuantity * nextUnitPrice));
+  }
+
+  // เช็คซ้ำแบบเบื้องต้นตอนออกจากช่อง (ตัวบล็อกจริงอยู่ที่ saveHpBill ฝั่งเซิร์ฟเวอร์ — อันนี้แค่เตือน
+  // ให้เห็นไว ๆ ก่อนจะกดบันทึกแล้วเจอ error)
+  async function handleDocumentNumberBlur(documentNumber: string) {
+    if (!documentNumber || documentType !== "ใบกำกับภาษี") {
+      setDuplicateWarning(null);
+      return;
+    }
+    try {
+      const result = await checkDuplicateInvoiceNumber({
+        documentNumber,
+        vendorId,
+        adhocVendorTaxId,
+        excludeHpNumber: hpNumber,
+      });
+      setDuplicateWarning(
+        result.duplicate
+          ? `เลขที่นี้ซ้ำกับเอกสาร ${result.hpNumber} ที่บันทึกไว้แล้ว (ผู้จำหน่ายเดียวกัน)`
+          : null,
+      );
+    } catch {
+      // เงียบไว้ — การเช็คนี้เป็นแค่ตัวเตือน ไม่ใช่ตัวบล็อกหลัก ถ้าเช็คไม่สำเร็จก็ปล่อยผ่านไปให้
+      // saveHpBill ฝั่งเซิร์ฟเวอร์เป็นตัวตัดสินตอนบันทึกจริงแทน
+      setDuplicateWarning(null);
+    }
   }
 
   return (
@@ -296,31 +331,53 @@ export function LineItemRow({
             )}
 
             {documentType !== "ยังไม่มีเอกสาร" && (
-              <Controller
-                control={control}
-                name={`${path}.document_number`}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    placeholder="เลขที่เอกสารรายการนี้"
-                    className="h-7 w-40 bg-background text-xs"
+              <div className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-background/60 p-1.5">
+                <div className="space-y-0.5">
+                  <Label className="text-[11px] font-normal text-muted-foreground">
+                    {documentType === "ใบกำกับภาษี" ? "เลขที่ใบกำกับภาษี" : "เลขที่ใบเสร็จ/บิลเงินสด"}
+                  </Label>
+                  <Controller
+                    control={control}
+                    name={`${path}.document_number`}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        onBlur={(e) => {
+                          field.onBlur();
+                          handleDocumentNumberBlur(e.target.value);
+                        }}
+                        placeholder="เลขที่เอกสารรายการนี้"
+                        className="h-7 w-40 bg-background text-xs"
+                      />
+                    )}
                   />
+                  {duplicateWarning && (
+                    <p className="flex items-center gap-1 text-[11px] text-destructive">
+                      <AlertTriangle className="size-3 shrink-0" />
+                      {duplicateWarning}
+                    </p>
+                  )}
+                </div>
+                {documentType === "ใบกำกับภาษี" && (
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">
+                      วันที่ในใบกำกับภาษี
+                    </Label>
+                    <Controller
+                      control={control}
+                      name={`${path}.document_invoice_date`}
+                      render={({ field }) => (
+                        <ThaiDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          className="h-7 w-28 bg-background text-xs"
+                        />
+                      )}
+                    />
+                  </div>
                 )}
-              />
-            )}
-            {documentType === "ใบกำกับภาษี" && (
-              <Controller
-                control={control}
-                name={`${path}.document_invoice_date`}
-                render={({ field }) => (
-                  <ThaiDatePicker
-                    value={field.value}
-                    onChange={field.onChange}
-                    className="h-7 w-28 bg-background text-xs"
-                  />
-                )}
-              />
+              </div>
             )}
             {vatEnabled && (
               <div className="flex items-center gap-1.5">
