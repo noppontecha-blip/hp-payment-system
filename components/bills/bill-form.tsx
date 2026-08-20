@@ -5,7 +5,7 @@ import { useForm, useFieldArray, Controller, type Resolver } from "react-hook-fo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Printer, RefreshCw, Ban, ShieldCheck, ShieldQuestion, ChevronDown } from "lucide-react";
+import { Plus, Printer, RefreshCw, Ban, ShieldCheck, ShieldQuestion, ChevronDown, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
+import { CurrencyInput } from "@/components/shared/currency-input";
 import { FormField } from "@/components/shared/form-field";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { RibbonBadge } from "@/components/shared/ribbon-badge";
@@ -42,7 +43,7 @@ import {
 import { peekHpNumber, saveHpBill, cancelHpBill } from "@/lib/actions/bills";
 import { deriveDocumentStatus, documentStatusTone } from "@/lib/utils/document-status";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, sanitizeFileName } from "@/lib/utils/format";
 import { formatThaiDate, toISODateString } from "@/lib/utils/thai-date";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/types/database";
@@ -129,6 +130,11 @@ export function BillForm({
   const [requiresWht, setRequiresWht] = useState(() => firstLine?.requires_wht ?? false);
   const [whtCategoryId, setWhtCategoryId] = useState<string | null>(firstLine?.wht_category_id ?? null);
   const [whtRatePct, setWhtRatePct] = useState<number | null>(firstLine?.wht_rate_pct ?? null);
+  // ยอดหัก ณ ที่จ่ายคำนวณอัตโนมัติจากอัตรา×ยอดรวมเป็นค่าเริ่มต้น แต่แก้ไขเองได้ — บางบิลมีทั้งค่าบริการ
+  // (ต้องหัก) และค่าสินค้า (ไม่ต้องหัก) ปนกัน ยอดที่คำนวณจากยอดรวมทั้งหมดจึงอาจไม่ตรงกับยอดที่ต้องหักจริง
+  const [whtAmount, setWhtAmount] = useState<number>(() =>
+    round2((initialValues?.lines ?? []).reduce((sum, l) => sum + (l.wht_amount ?? 0), 0)),
+  );
 
   const defaultValues: HpBillFormValues = initialValues ?? {
     hp_number: hpNumber,
@@ -191,9 +197,11 @@ export function BillForm({
 
   const totalBeforeVat = round2(linesWatch.reduce((sum, l) => sum + (l.amount_before_vat || 0), 0));
   const vatAmount = vatEnabled ? round2(totalBeforeVat * 0.07) : 0;
-  const whtAmount =
-    requiresWht && whtRatePct != null ? round2(totalBeforeVat * (whtRatePct / 100)) : 0;
-  const netTotal = round2(totalBeforeVat + vatAmount - whtAmount);
+  const effectiveWhtAmount = requiresWht ? whtAmount : 0;
+  const netTotal = round2(totalBeforeVat + vatAmount - effectiveWhtAmount);
+  function recomputeWhtAmount() {
+    setWhtAmount(whtRatePct != null ? round2(totalBeforeVat * (whtRatePct / 100)) : 0);
+  }
 
   const paidFromPayments = (payments ?? []).reduce((sum, p) => sum + p.amount, 0);
   const paidTotal = paidFromPayments > 0 ? paidFromPayments : watch("payment_date") ? netTotal : 0;
@@ -222,10 +230,23 @@ export function BillForm({
         : selectedVendor?.vendor_type === "บุคคลธรรมดา"
           ? "ภ.ง.ด.3"
           : null;
-    return getValues("lines").map((line) => {
+    const lines = getValues("lines");
+    // ยอดหัก ณ ที่จ่ายอาจถูกแก้เองจนไม่ตรงกับอัตรา×ยอดรวมพอดี (เช่น บิลมีทั้งค่าบริการที่ต้องหักและ
+    // ค่าสินค้าที่ไม่ต้องหักปนกัน) — กระจายยอดที่ (อาจถูกแก้ไขแล้ว) นี้ตามสัดส่วนของแต่ละรายการแทนที่จะ
+    // คำนวณจากอัตราตรง ๆ ต่อบรรทัด แล้วปัดเศษไปรวมไว้ที่บรรทัดสุดท้ายกันผลรวมคลาดเคลื่อน
+    let whtAllocated = 0;
+    return lines.map((line, i) => {
       const amount = line.amount_before_vat || 0;
       const vat = vatEnabled ? round2(amount * 0.07) : 0;
-      const wht = requiresWht && whtRatePct != null ? round2(amount * (whtRatePct / 100)) : 0;
+      let wht = 0;
+      if (requiresWht) {
+        if (i === lines.length - 1) {
+          wht = round2(whtAmount - whtAllocated);
+        } else {
+          wht = totalBeforeVat > 0 ? round2(whtAmount * (amount / totalBeforeVat)) : 0;
+          whtAllocated = round2(whtAllocated + wht);
+        }
+      }
       return {
         ...line,
         vat_amount: vat,
@@ -276,7 +297,7 @@ export function BillForm({
     setScanningSlip(true);
     try {
       const supabase = createClient();
-      const path = `${currentHpNumber}/header-${Date.now()}-${file.name}`;
+      const path = `${currentHpNumber}/header-${Date.now()}-${sanitizeFileName(file.name)}`;
       const { error } = await supabase.storage.from("payment-slips").upload(path, file, {
         upsert: true,
       });
@@ -311,6 +332,17 @@ export function BillForm({
       setValue("payment_date", slipOcrDate);
       toast.success("ใช้ข้อมูลจากสลิปแล้ว");
     }
+  }
+
+  async function handleViewSlip() {
+    if (!slipPath) return;
+    const supabase = createClient();
+    const { data, error } = await supabase.storage.from("payment-slips").createSignedUrl(slipPath, 3600);
+    if (error || !data) {
+      toast.error("เปิดไฟล์สลิปไม่สำเร็จ");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   }
 
   function onSave(saveMode: "draft" | "final") {
@@ -679,11 +711,16 @@ export function BillForm({
                   onValueChange={(v) => {
                     if (v === NONE) {
                       setWhtCategoryId(null);
+                      setWhtRatePct(null);
                       return;
                     }
                     setWhtCategoryId(v);
                     const category = whtCategories.find((c) => c.id === v);
-                    setWhtRatePct(category?.default_rate_pct ?? null);
+                    const nextRate = category?.default_rate_pct ?? null;
+                    setWhtRatePct(nextRate);
+                    // ใช้ nextRate ตรง ๆ แทนอ่านจาก whtRatePct state เพราะ setWhtRatePct ข้างบนยัง
+                    // ไม่ผ่าน re-render ตอนนี้ — ค่าเก่าจะยังค้างอยู่ถ้าอ่านจาก state ตรงนี้
+                    setWhtAmount(nextRate != null ? round2(totalBeforeVat * (nextRate / 100)) : 0);
                   }}
                 >
                   <SelectTrigger className="w-full bg-background">
@@ -707,10 +744,25 @@ export function BillForm({
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="ยอดหัก ณ ที่จ่าย (คำนวณอัตโนมัติ)">
-                <div className="flex h-8 items-center rounded-lg bg-background px-2.5 font-mono text-sm font-semibold text-warn">
-                  {formatCurrency(whtAmount)}
+              <FormField label="ยอดหัก ณ ที่จ่าย">
+                <div className="flex items-center gap-1.5">
+                  <CurrencyInput value={whtAmount} onChange={setWhtAmount} className="bg-background" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={recomputeWhtAmount}
+                    disabled={whtRatePct == null}
+                    aria-label="คำนวณอัตโนมัติจากอัตราหัก ณ ที่จ่าย"
+                    title="คำนวณอัตโนมัติ"
+                  >
+                    <RefreshCw className="size-3.5" />
+                  </Button>
                 </div>
+                <p className="mt-1 text-[11px] text-muted-2">
+                  คำนวณอัตโนมัติจากอัตรา × ยอดรวม แต่แก้ไขเองได้ เช่น กรณีในบิลมีทั้งค่าบริการที่ต้องหักและ
+                  ค่าสินค้าที่ไม่ต้องหักปนกัน
+                </p>
               </FormField>
             </div>
           )}
@@ -777,6 +829,12 @@ export function BillForm({
               onFile={handleSlipUpload}
               attachedHint={slipPath && !scanningSlip ? "แนบไฟล์แล้ว" : undefined}
             />
+            {slipPath && !scanningSlip && (
+              <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={handleViewSlip}>
+                <Download className="size-4" />
+                ดูสลิปที่แนบไว้
+              </Button>
+            )}
           </FormField>
 
           {slipPath &&
@@ -821,7 +879,7 @@ export function BillForm({
         </div>
       </div>
 
-      <SummaryBar beforeVat={totalBeforeVat} vat={vatAmount} wht={whtAmount} net={netTotal} />
+      <SummaryBar beforeVat={totalBeforeVat} vat={vatAmount} wht={effectiveWhtAmount} net={netTotal} />
 
       <div className="flex items-center justify-between">
         {mode === "edit" && !isCancelled ? (

@@ -12,12 +12,16 @@ const toneClasses: Record<Tone, string> = {
   danger: "bg-danger text-white",
 };
 
+// Smaller footprint + partial opacity than a typical corner sash — the original full-size,
+// fully-opaque version sat directly over the "เลข HP" label in the header card underneath it,
+// making the HP number unreadable. Shrinking the band and letting it read through keeps the
+// corner-accent look without blocking real document data.
 export function RibbonBadge({ label, tone }: { label: string; tone: Tone }) {
   return (
-    <div className="pointer-events-none absolute top-0 right-0 z-10 size-36 overflow-hidden">
+    <div className="pointer-events-none absolute top-0 right-0 z-10 size-20 overflow-hidden">
       <div
         className={cn(
-          "absolute top-[30px] right-[-46px] w-[220px] rotate-45 py-1.5 text-center text-[10px] font-bold whitespace-nowrap shadow-sm",
+          "absolute top-[14px] right-[-32px] w-[150px] rotate-45 py-1 text-center text-[9px] font-bold whitespace-nowrap opacity-80 shadow-sm",
           toneClasses[tone],
         )}
       >

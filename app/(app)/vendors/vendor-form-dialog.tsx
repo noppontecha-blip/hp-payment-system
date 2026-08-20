@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/select";
 import { FormField } from "@/components/shared/form-field";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
+import { sanitizeFileName } from "@/lib/utils/format";
+import { composeThaiAddress } from "@/lib/utils/address";
 import { createVendor, updateVendor, generateVendorCode } from "@/lib/actions/vendors";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/types/database";
@@ -76,6 +78,17 @@ const emptyValues: VendorFormValues = {
   delivery_method: "",
   mailing_address: "",
   registered_address: "",
+  address_number: "",
+  address_moo: "",
+  address_village: "",
+  address_soi: "",
+  address_road: "",
+  address_subdistrict: "",
+  address_district: "",
+  address_province: "",
+  address_postal_code: "",
+  branch_type: "สำนักงานใหญ่",
+  branch_code: "",
   id_document_path: "",
 };
 
@@ -131,6 +144,17 @@ export function VendorFormDialog({
           delivery_method: vendor.delivery_method ?? "",
           mailing_address: vendor.mailing_address ?? "",
           registered_address: vendor.registered_address ?? "",
+          address_number: vendor.address_number ?? "",
+          address_moo: vendor.address_moo ?? "",
+          address_village: vendor.address_village ?? "",
+          address_soi: vendor.address_soi ?? "",
+          address_road: vendor.address_road ?? "",
+          address_subdistrict: vendor.address_subdistrict ?? "",
+          address_district: vendor.address_district ?? "",
+          address_province: vendor.address_province ?? "",
+          address_postal_code: vendor.address_postal_code ?? "",
+          branch_type: vendor.branch_type ?? "สำนักงานใหญ่",
+          branch_code: vendor.branch_code ?? "",
           id_document_path: vendor.id_document_path ?? "",
         }
       : emptyValues,
@@ -139,6 +163,7 @@ export function VendorFormDialog({
   const vendorType = watch("vendor_type");
   const idDocumentPath = watch("id_document_path");
   const paymentMethod = watch("payment_method");
+  const branchType = watch("branch_type");
   const whtCertificateName = watch("wht_certificate_name");
   const defaultWhtCategoryId = watch("default_wht_category_id");
   const selectedWhtCategory = whtCategories.find((c) => c.id === defaultWhtCategoryId);
@@ -193,7 +218,7 @@ export function VendorFormDialog({
     try {
       const supabase = createClient();
       const code = getValues("code")?.trim() || "vendor";
-      const path = `${code}/${Date.now()}-${file.name}`;
+      const path = `${code}/${Date.now()}-${sanitizeFileName(file.name)}`;
       const { error } = await supabase.storage.from("vendor-documents").upload(path, file, {
         upsert: true,
       });
@@ -222,7 +247,14 @@ export function VendorFormDialog({
     window.open(data.signedUrl, "_blank");
   }
 
-  async function onSubmit(values: VendorFormValues) {
+  async function onSubmit(rawValues: VendorFormValues) {
+    // registered_address is derived from the structured fields, not typed directly — recompute
+    // it here so existing readers (bill-form, 50-ทวิ route) keep getting a correct joined string.
+    // If none of the structured fields were filled (e.g. the address came from the DBD lookup as
+    // one plain string and the owner never broke it apart), keep whatever's already there instead
+    // of overwriting it with an empty string.
+    const composed = composeThaiAddress(rawValues);
+    const values = { ...rawValues, registered_address: composed || rawValues.registered_address };
     try {
       if (vendor) {
         await updateVendor(vendor.id, values);
@@ -323,6 +355,87 @@ export function VendorFormDialog({
                   placeholder={vendorType === "นิติบุคคล" ? "เช่น บริษัท ทดสอบ จำกัด" : undefined}
                 />
               </FormField>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <Checkbox
+                    id="branch-hq"
+                    checked={branchType === "สำนักงานใหญ่"}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) {
+                        setValue("branch_type", "สำนักงานใหญ่");
+                        setValue("branch_code", "");
+                      }
+                    }}
+                  />
+                  <Label htmlFor="branch-hq" className="cursor-pointer font-normal">
+                    สำนักงานใหญ่
+                  </Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Checkbox
+                    id="branch-sub"
+                    checked={branchType === "สาขา"}
+                    onCheckedChange={(checked) => {
+                      if (checked === true) setValue("branch_type", "สาขา");
+                    }}
+                  />
+                  <Label htmlFor="branch-sub" className="cursor-pointer font-normal">
+                    สาขา
+                  </Label>
+                </div>
+                {branchType === "สาขา" && (
+                  <Input
+                    {...register("branch_code")}
+                    placeholder="รหัสสาขา เช่น 00001"
+                    maxLength={5}
+                    className="w-36"
+                  />
+                )}
+              </div>
+              {errors.branch_code && (
+                <p className="col-span-2 -mt-2 text-xs text-destructive">{errors.branch_code.message}</p>
+              )}
+
+              <FormField label="ที่อยู่จดทะเบียน (สำหรับใบ 50 ทวิ)" className="col-span-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">เลขที่</Label>
+                    <Input {...register("address_number")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">หมู่ที่</Label>
+                    <Input {...register("address_moo")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">หมู่บ้าน/นิคม</Label>
+                    <Input {...register("address_village")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">ซอย</Label>
+                    <Input {...register("address_soi")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">ถนน</Label>
+                    <Input {...register("address_road")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">ตำบล/แขวง</Label>
+                    <Input {...register("address_subdistrict")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">อำเภอ/เขต</Label>
+                    <Input {...register("address_district")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">จังหวัด</Label>
+                    <Input {...register("address_province")} />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[11px] font-normal text-muted-foreground">รหัสไปรษณีย์</Label>
+                    <Input {...register("address_postal_code")} maxLength={5} />
+                  </div>
+                </div>
+              </FormField>
               <FormField
                 label="บัญชีที่มักใช้"
                 required
@@ -376,7 +489,7 @@ export function VendorFormDialog({
                     <Input {...register("bank_name")} />
                   </FormField>
                   <FormField label="เลขบัญชี" required error={errors.bank_account?.message}>
-                    <Input {...register("bank_account")} />
+                    <Input {...register("bank_account")} placeholder="เช่น 123-4-56789-0" />
                   </FormField>
                   <FormField label="ชื่อบัญชี" required error={errors.bank_account_name?.message}>
                     <Input {...register("bank_account_name")} />
@@ -484,12 +597,6 @@ export function VendorFormDialog({
             </div>
             <FormField label="ที่อยู่จัดส่งเอกสาร" error={errors.mailing_address?.message}>
               <Textarea {...register("mailing_address")} rows={2} />
-            </FormField>
-            <FormField
-              label="ที่อยู่จดทะเบียน (สำหรับใบ 50 ทวิ)"
-              error={errors.registered_address?.message}
-            >
-              <Textarea {...register("registered_address")} rows={2} />
             </FormField>
             <FormField label="สำเนาบัตรประชาชน / เอกสารยืนยันตัวตน">
               <div className="flex items-center gap-2">

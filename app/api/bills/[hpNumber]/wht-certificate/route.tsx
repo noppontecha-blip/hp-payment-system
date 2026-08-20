@@ -44,22 +44,29 @@ export async function GET(
     );
   }
 
-  const amountBeforeVat = lines.reduce((sum, l) => sum + (l.amount_before_vat || 0), 0);
-  const whtAmount = lines.reduce((sum, l) => sum + (l.wht_amount || 0), 0);
-
-  const { data: whtCategory } = first.wht_category_id
-    ? await supabase.from("wht_categories").select("*").eq("id", first.wht_category_id).single()
-    : { data: null };
+  // แต่ละรายการย่อยที่ต้องหัก ณ ที่จ่ายขึ้นเป็นแถวของตัวเองในหนังสือรับรอง — ก่อนหน้านี้รวมทุกรายการ
+  // เป็นแถวเดียว ทำให้เอกสารดูเหมือน "รายการหาย" เมื่อบิลมีหลายรายการย่อย
+  const whtLines = lines.filter((l) => l.requires_wht);
+  const categoryIds = Array.from(
+    new Set(whtLines.map((l) => l.wht_category_id).filter((id): id is string => !!id)),
+  );
+  const { data: whtCategories } = categoryIds.length > 0
+    ? await supabase.from("wht_categories").select("*").in("id", categoryIds)
+    : { data: [] };
+  const categoryMap = new Map((whtCategories ?? []).map((c) => [c.id, c.name]));
 
   const buffer = await renderToBuffer(
     <WhtCertificateDocument
       data={{
         hpNumber,
-        paymentDate: first.payment_date ?? first.transaction_date,
-        incomeTypeLabel: whtCategory?.name ?? "อื่นๆ",
-        amountBeforeVat,
-        whtRatePct: first.wht_rate_pct,
-        whtAmount,
+        transactionDate: first.transaction_date,
+        lines: whtLines.map((l) => ({
+          incomeTypeLabel: l.wht_category_id ? (categoryMap.get(l.wht_category_id) ?? "อื่นๆ") : "อื่นๆ",
+          paymentDate: l.payment_date ?? l.transaction_date,
+          amountBeforeVat: l.amount_before_vat || 0,
+          whtRatePct: l.wht_rate_pct,
+          whtAmount: l.wht_amount || 0,
+        })),
         company: {
           company_name: company.company_name,
           tax_id: company.tax_id,
@@ -72,6 +79,12 @@ export async function GET(
           tax_id: vendor.tax_id,
           vendor_type: vendor.vendor_type,
           registered_address: vendor.registered_address,
+          branchLabel:
+            vendor.branch_type === "สาขา"
+              ? `สาขา ${vendor.branch_code ?? "-"}`
+              : vendor.branch_type === "สำนักงานใหญ่"
+                ? "สำนักงานใหญ่"
+                : null,
         },
       }}
     />,

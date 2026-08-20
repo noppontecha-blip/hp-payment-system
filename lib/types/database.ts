@@ -33,6 +33,17 @@ export type Database = {
           vendor_type: "นิติบุคคล" | "บุคคลธรรมดา" | null;
           vat_registered: boolean;
           registered_address: string | null;
+          address_number: string | null;
+          address_moo: string | null;
+          address_village: string | null;
+          address_soi: string | null;
+          address_road: string | null;
+          address_subdistrict: string | null;
+          address_district: string | null;
+          address_province: string | null;
+          address_postal_code: string | null;
+          branch_type: "สำนักงานใหญ่" | "สาขา" | null;
+          branch_code: string | null;
           id_document_path: string | null;
           created_at: string;
           updated_at: string;

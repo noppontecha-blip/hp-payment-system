@@ -49,7 +49,13 @@ export function VendorCombobox({
           const raw = item as unknown as string | VendorOption;
           return typeof raw === "string" ? (vendors.find((v) => v.id === raw)?.name ?? "") : raw.label;
         }}
-        value={vendorId ?? null}
+        // Keep the fixed "ทั่วไป" fallback out of the combobox's own controlled value while the
+        // user is freely typing a one-off name — telling Base UI "an item is selected" (V9999)
+        // while the visible text doesn't match that item's label ("ทั่วไป") caused it to fight the
+        // user's own edits, silently un-doing some backspace keystrokes mid-delete. Treating this
+        // as "no item selected" (null) whenever it's the generic fallback lets the input behave
+        // like a plain text field again; a real matched vendor still shows as selected normally.
+        value={vendorId && vendorId !== genericVendor?.id ? vendorId : null}
         onValueChange={(value) => {
           const match = vendors.find((v) => v.id === value);
           onChange({ vendor_id: value, vendor_name_snapshot: match?.name ?? vendorName });

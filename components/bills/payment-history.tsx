@@ -19,7 +19,7 @@ import { CurrencyInput } from "@/components/shared/currency-input";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { createBillPayment, deleteBillPayment } from "@/lib/actions/bill-payments";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, sanitizeFileName } from "@/lib/utils/format";
 import { formatThaiDate, toISODateString } from "@/lib/utils/thai-date";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/lib/types/database";
@@ -75,7 +75,7 @@ export function PaymentHistory({
     setScanning(true);
     try {
       const supabase = createClient();
-      const path = `${hpNumber}/${Date.now()}-${file.name}`;
+      const path = `${hpNumber}/${Date.now()}-${sanitizeFileName(file.name)}`;
       const { error } = await supabase.storage.from("payment-slips").upload(path, file, {
         upsert: true,
       });
@@ -106,6 +106,16 @@ export function PaymentHistory({
     if (scanResult.amount != null) setAmount(scanResult.amount);
     if (scanResult.date) setDate(scanResult.date);
     toast.success("ใช้ข้อมูลจากสลิปแล้ว");
+  }
+
+  async function handleViewSlip(path: string) {
+    const supabase = createClient();
+    const { data, error } = await supabase.storage.from("payment-slips").createSignedUrl(path, 3600);
+    if (error || !data) {
+      toast.error("เปิดไฟล์สลิปไม่สำเร็จ");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   }
 
   async function handleAdd() {
@@ -183,11 +193,17 @@ export function PaymentHistory({
                 <td className="p-2 text-muted-foreground">{p.notes ?? "-"}</td>
                 <td className="p-2">
                   {p.slip_path ? (
-                    p.slip_looks_valid ? (
-                      <ShieldCheck className="size-4 text-success" aria-label="ดูเหมือน slip จริง" />
-                    ) : (
-                      <ShieldQuestion className="size-4 text-warn" aria-label="ตรวจสอบไม่ผ่าน กรุณาตรวจสอบเอง" />
-                    )
+                    <button
+                      type="button"
+                      onClick={() => handleViewSlip(p.slip_path as string)}
+                      aria-label="ดูสลิปที่แนบไว้"
+                    >
+                      {p.slip_looks_valid ? (
+                        <ShieldCheck className="size-4 text-success" />
+                      ) : (
+                        <ShieldQuestion className="size-4 text-warn" />
+                      )}
+                    </button>
                   ) : (
                     "-"
                   )}

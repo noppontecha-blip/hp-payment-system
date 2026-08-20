@@ -29,7 +29,21 @@ export const vendorSchema = z
       .nullable(),
     delivery_method: z.string().optional().nullable(),
     mailing_address: z.string().optional().nullable(),
+    // registered_address is derived (composeThaiAddress) from the structured fields below at
+    // submit time, not typed directly — kept in the schema since existing readers (bill-form,
+    // wht-certificate route, fetch-expense-document) still consume the single joined string.
     registered_address: z.string().optional().nullable(),
+    address_number: z.string().optional().nullable(),
+    address_moo: z.string().optional().nullable(),
+    address_village: z.string().optional().nullable(),
+    address_soi: z.string().optional().nullable(),
+    address_road: z.string().optional().nullable(),
+    address_subdistrict: z.string().optional().nullable(),
+    address_district: z.string().optional().nullable(),
+    address_province: z.string().optional().nullable(),
+    address_postal_code: z.string().optional().nullable(),
+    branch_type: z.enum(["สำนักงานใหญ่", "สาขา"]).optional().nullable(),
+    branch_code: z.string().optional().nullable(),
     id_document_path: z.string().optional().nullable(),
   })
   .superRefine((v, ctx) => {
@@ -50,6 +64,12 @@ export const vendorSchema = z
         path: ["name"],
         message: 'ชื่อนิติบุคคลควรมีคำว่า "จำกัด" ต่อท้าย เช่น บริษัท ... จำกัด',
       });
+    }
+    if (v.branch_type === "สาขา" && !v.branch_code) {
+      ctx.addIssue({ code: "custom", path: ["branch_code"], message: "กรุณากรอกรหัสสาขา" });
+    }
+    if (v.branch_code && !/^\d+$/.test(v.branch_code)) {
+      ctx.addIssue({ code: "custom", path: ["branch_code"], message: "รหัสสาขาต้องเป็นตัวเลขเท่านั้น" });
     }
   });
 

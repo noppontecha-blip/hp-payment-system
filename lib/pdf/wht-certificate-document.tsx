@@ -11,12 +11,13 @@ const BLUE_BORDER = "#B7D2F7";
 const styles = StyleSheet.create({
   page: {
     fontFamily: "NotoSansThai",
-    fontSize: 10,
+    fontSize: 12,
     padding: 36,
     color: "#1a1a1a",
   },
-  title: { fontSize: 16, fontWeight: "bold", textAlign: "center", color: BLUE },
-  subtitle: { fontSize: 10, textAlign: "center", marginBottom: 14 },
+  title: { fontSize: 18, fontWeight: "bold", textAlign: "center", color: BLUE },
+  subtitle: { fontSize: 12, textAlign: "center" },
+  subtitleBlock: { marginBottom: 14 },
   box: { border: `1pt solid ${BLUE_BORDER}`, borderRadius: 4, padding: 8, marginBottom: 10 },
   boxLabel: { fontWeight: "bold", marginBottom: 4, color: BLUE },
   row: { flexDirection: "row", marginBottom: 2 },
@@ -49,11 +50,14 @@ const styles = StyleSheet.create({
 
 export type WhtCertificateData = {
   hpNumber: string;
-  paymentDate: string | null;
-  incomeTypeLabel: string;
-  amountBeforeVat: number;
-  whtRatePct: number | null;
-  whtAmount: number;
+  transactionDate: string;
+  lines: {
+    incomeTypeLabel: string;
+    paymentDate: string | null;
+    amountBeforeVat: number;
+    whtRatePct: number | null;
+    whtAmount: number;
+  }[];
   company: {
     company_name: string;
     tax_id: string | null;
@@ -66,18 +70,25 @@ export type WhtCertificateData = {
     tax_id: string | null;
     vendor_type: string | null;
     registered_address: string | null;
+    branchLabel: string | null;
   };
 };
 
 export function WhtCertificateDocument({ data }: { data: WhtCertificateData }) {
   registerThaiFont();
   const idLabel = data.vendor.vendor_type === "บุคคลธรรมดา" ? "เลขบัตรประชาชน" : "เลขประจำตัวผู้เสียภาษี";
+  const totalBeforeVat = data.lines.reduce((sum, l) => sum + l.amountBeforeVat, 0);
+  const totalWht = data.lines.reduce((sum, l) => sum + l.whtAmount, 0);
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <Text style={styles.title}>หนังสือรับรองการหักภาษี ณ ที่จ่าย</Text>
-        <Text style={styles.subtitle}>ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร · เลขที่บิล {data.hpNumber}</Text>
+        <View style={styles.subtitleBlock}>
+          <Text style={styles.subtitle}>ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร</Text>
+          <Text style={styles.subtitle}>เลขที่เอกสาร: {data.hpNumber}</Text>
+          <Text style={styles.subtitle}>วันที่: {formatThaiDate(data.transactionDate)}</Text>
+        </View>
 
         <View style={styles.box}>
           <Text style={styles.boxLabel}>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย (ผู้จ่ายเงิน)</Text>
@@ -109,6 +120,12 @@ export function WhtCertificateDocument({ data }: { data: WhtCertificateData }) {
             <Text style={styles.label}>{idLabel}</Text>
             <Text style={styles.value}>{data.vendor.tax_id || "-"}</Text>
           </View>
+          {data.vendor.branchLabel && (
+            <View style={styles.row}>
+              <Text style={styles.label}>สาขา</Text>
+              <Text style={styles.value}>{data.vendor.branchLabel}</Text>
+            </View>
+          )}
           <View style={styles.row}>
             <Text style={styles.label}>ที่อยู่</Text>
             <Text style={styles.value}>{data.vendor.registered_address || "-"}</Text>
@@ -123,25 +140,27 @@ export function WhtCertificateDocument({ data }: { data: WhtCertificateData }) {
             <Text style={[styles.th, { width: 50 }]}>อัตรา</Text>
             <Text style={[styles.th, { width: 100, borderRight: 0 }]}>ภาษีที่หักและนำส่ง</Text>
           </View>
-          <View style={styles.tr}>
-            <Text style={[styles.td, { width: 140 }]}>{data.incomeTypeLabel}</Text>
-            <Text style={[styles.td, { width: 80 }]}>{formatThaiDate(data.paymentDate)}</Text>
-            <Text style={[styles.tdNum, { width: 100 }]}>{formatNumber(data.amountBeforeVat)}</Text>
-            <Text style={[styles.td, { width: 50, textAlign: "center" }]}>
-              {data.whtRatePct != null ? `${data.whtRatePct}%` : "-"}
-            </Text>
-            <Text style={[styles.tdNum, { width: 100, borderRight: 0 }]}>{formatNumber(data.whtAmount)}</Text>
-          </View>
+          {data.lines.map((line, i) => (
+            <View style={styles.tr} key={i}>
+              <Text style={[styles.td, { width: 140 }]}>{line.incomeTypeLabel}</Text>
+              <Text style={[styles.td, { width: 80 }]}>{formatThaiDate(line.paymentDate)}</Text>
+              <Text style={[styles.tdNum, { width: 100 }]}>{formatNumber(line.amountBeforeVat)}</Text>
+              <Text style={[styles.td, { width: 50, textAlign: "center" }]}>
+                {line.whtRatePct != null ? `${line.whtRatePct}%` : "-"}
+              </Text>
+              <Text style={[styles.tdNum, { width: 100, borderRight: 0 }]}>{formatNumber(line.whtAmount)}</Text>
+            </View>
+          ))}
           <View style={styles.totalRow}>
             <Text style={[styles.td, { width: 220 }]}>รวมเงินที่จ่ายและภาษีที่หักนำส่ง</Text>
-            <Text style={[styles.tdNum, { width: 100 }]}>{formatNumber(data.amountBeforeVat)}</Text>
+            <Text style={[styles.tdNum, { width: 100 }]}>{formatNumber(totalBeforeVat)}</Text>
             <Text style={[styles.td, { width: 50 }]} />
-            <Text style={[styles.tdNum, { width: 100, borderRight: 0 }]}>{formatNumber(data.whtAmount)}</Text>
+            <Text style={[styles.tdNum, { width: 100, borderRight: 0 }]}>{formatNumber(totalWht)}</Text>
           </View>
         </View>
 
         <Text style={{ marginTop: 8 }}>
-          (จำนวนเงินภาษีที่หักนำส่งทั้งสิ้น {bahtText(data.whtAmount)})
+          (จำนวนเงินภาษีที่หักนำส่งทั้งสิ้น {bahtText(totalWht)})
         </Text>
 
         <View style={styles.footer}>

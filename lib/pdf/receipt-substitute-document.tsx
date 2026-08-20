@@ -13,11 +13,11 @@ const BLUE_BORDER = "#B7D2F7";
 const styles = StyleSheet.create({
   page: {
     fontFamily: "NotoSansThai",
-    fontSize: 10,
+    fontSize: 12,
     padding: 36,
     color: "#1a1a1a",
   },
-  title: { fontSize: 16, fontWeight: "bold", color: BLUE },
+  title: { fontSize: 18, fontWeight: "bold", color: BLUE },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   td: { padding: 4, borderRight: `1pt solid ${BLUE_BORDER}` },
   tdNum: { padding: 4, borderRight: `1pt solid ${BLUE_BORDER}`, textAlign: "right" },
   tdCenter: { padding: 4, borderRight: `1pt solid ${BLUE_BORDER}`, textAlign: "center" },
-  tdSub: { color: "#6b7280", fontSize: 8.5, marginTop: 1 },
+  tdSub: { color: "#6b7280", fontSize: 10.5, marginTop: 1 },
   totalsBox: { marginTop: 8, alignSelf: "flex-end", width: 240 },
   totalsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
   totalsRowBold: {
