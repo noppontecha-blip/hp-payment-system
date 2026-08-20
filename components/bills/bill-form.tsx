@@ -5,11 +5,22 @@ import { useForm, useFieldArray, Controller, type Resolver } from "react-hook-fo
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Printer, RefreshCw, Ban, ShieldCheck, ShieldQuestion, ChevronDown, Download } from "lucide-react";
+import {
+  Plus,
+  Printer,
+  RefreshCw,
+  Ban,
+  ShieldCheck,
+  ShieldQuestion,
+  ChevronDown,
+  Download,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,7 +51,7 @@ import {
   hpBillFinalSchema,
   type HpBillFormValues,
 } from "@/lib/validations/hp-line";
-import { peekHpNumber, saveHpBill, cancelHpBill } from "@/lib/actions/bills";
+import { peekHpNumber, saveHpBill, cancelHpBill, checkDuplicateInvoiceNumber } from "@/lib/actions/bills";
 import { deriveDocumentStatus, documentStatusTone } from "@/lib/utils/document-status";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, sanitizeFileName } from "@/lib/utils/format";
@@ -135,6 +146,24 @@ export function BillForm({
   const [whtAmount, setWhtAmount] = useState<number>(() =>
     round2((initialValues?.lines ?? []).reduce((sum, l) => sum + (l.wht_amount ?? 0), 0)),
   );
+
+  // เลขที่/วันที่ใบกำกับภาษี — ปกติ 1 HP มีใบกำกับภาษีใบเดียว (กรอกครั้งเดียว ใช้กับทุกรายการย่อย)
+  // แต่บางบิล (เช่น ค่าประกันภัยจ่ายทีเดียวแต่มีใบกำกับแยกตามรถแต่ละคัน) มีหลายใบตามรายการ — สลับโหมดได้
+  // ด้วยติ๊กนี้. ตรวจจากข้อมูลเดิมตอนเปิดแก้ไข: ถ้าทุกรายการมีเลขที่/วันที่เดียวกันหมด ถือว่าเป็นโหมดเดียว
+  // (ค่าเริ่มต้น) ถ้าต่างกันแม้แต่รายการเดียว ถือว่าเคยแยกตามรายการไว้แล้ว
+  const [invoicePerLine, setInvoicePerLine] = useState(() => {
+    const lines = initialValues?.lines ?? [];
+    if (lines.length < 2) return false;
+    const first = lines[0];
+    return lines.some(
+      (l) => l.document_number !== first.document_number || l.document_invoice_date !== first.document_invoice_date,
+    );
+  });
+  const [singleDocumentNumber, setSingleDocumentNumber] = useState(() => firstLine?.document_number ?? "");
+  const [singleDocumentInvoiceDate, setSingleDocumentInvoiceDate] = useState<string | null>(
+    () => firstLine?.document_invoice_date ?? null,
+  );
+  const [singleInvoiceDuplicateWarning, setSingleInvoiceDuplicateWarning] = useState<string | null>(null);
 
   const defaultValues: HpBillFormValues = initialValues ?? {
     hp_number: hpNumber,
@@ -256,6 +285,14 @@ export function BillForm({
         wht_amount: requiresWht ? wht : null,
         wht_pnd_form: pndForm,
         net_paid_amount: round2(amount + vat - wht),
+        // ใบกำกับภาษีใบเดียวสำหรับทั้งเอกสาร — กรอกครั้งเดียวแล้วใช้ค่าเดียวกันกับทุกรายการย่อย แทนที่
+        // ค่าที่กรอกไว้ต่อรายการ (ถ้ามี) เพื่อให้รายงานภาษีซื้อรวมยอดถูกต้องครบทุกบรรทัด
+        ...(documentType !== "ยังไม่มีเอกสาร" && !invoicePerLine
+          ? {
+              document_number: singleDocumentNumber || null,
+              document_invoice_date: documentType === "ใบกำกับภาษี" ? singleDocumentInvoiceDate : null,
+            }
+          : {}),
       };
     });
   }
@@ -587,6 +624,62 @@ export function BillForm({
                 )}
               />
             )}
+            {documentType !== "ยังไม่มีเอกสาร" && (
+              <div className="flex items-center gap-1.5 sm:col-span-2">
+                <Checkbox
+                  id="invoice-per-line"
+                  checked={invoicePerLine}
+                  onCheckedChange={(checked) => setInvoicePerLine(checked === true)}
+                />
+                <Label htmlFor="invoice-per-line" className="cursor-pointer font-normal">
+                  ใบกำกับภาษีแยกตามรายการ (1 HP มีหลายใบ เช่น ประกันภัยแยกตามรถแต่ละคัน)
+                </Label>
+              </div>
+            )}
+            {documentType !== "ยังไม่มีเอกสาร" && !invoicePerLine && (
+              <div>
+                <FormField label={documentType === "ใบกำกับภาษี" ? "เลขที่ใบกำกับภาษี" : "เลขที่เอกสาร"}>
+                  <Input
+                    value={singleDocumentNumber}
+                    onChange={(e) => setSingleDocumentNumber(e.target.value)}
+                    onBlur={async (e) => {
+                      const value = e.target.value;
+                      if (!value || documentType !== "ใบกำกับภาษี") {
+                        setSingleInvoiceDuplicateWarning(null);
+                        return;
+                      }
+                      try {
+                        const result = await checkDuplicateInvoiceNumber({
+                          documentNumber: value,
+                          vendorId: vendorId ?? null,
+                          adhocVendorTaxId: adhocVendorTaxId ?? null,
+                          excludeHpNumber: currentHpNumber,
+                        });
+                        setSingleInvoiceDuplicateWarning(
+                          result.duplicate
+                            ? `เลขที่นี้ซ้ำกับเอกสาร ${result.hpNumber} ที่บันทึกไว้แล้ว (ผู้จำหน่ายเดียวกัน)`
+                            : null,
+                        );
+                      } catch {
+                        setSingleInvoiceDuplicateWarning(null);
+                      }
+                    }}
+                    placeholder="เลขที่เอกสาร"
+                  />
+                </FormField>
+                {singleInvoiceDuplicateWarning && (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] text-destructive">
+                    <AlertTriangle className="size-3 shrink-0" />
+                    {singleInvoiceDuplicateWarning}
+                  </p>
+                )}
+              </div>
+            )}
+            {documentType === "ใบกำกับภาษี" && !invoicePerLine && (
+              <FormField label="วันที่ในใบกำกับภาษี">
+                <ThaiDatePicker value={singleDocumentInvoiceDate} onChange={setSingleDocumentInvoiceDate} />
+              </FormField>
+            )}
             {documentType === "ใบกำกับภาษี" && (
               <Controller
                 control={control}
@@ -664,7 +757,7 @@ export function BillForm({
                     accounts={expenseAccounts}
                     vehicles={vehicles}
                     assetCategories={assetCategories}
-                    documentType={documentType}
+                    documentType={invoicePerLine ? documentType : "ยังไม่มีเอกสาร"}
                     vatEnabled={vatEnabled}
                     hpNumber={currentHpNumber}
                     vendorId={vendorId ?? null}
@@ -766,6 +859,14 @@ export function BillForm({
               </FormField>
             </div>
           )}
+
+          <SummaryBar
+            beforeVat={totalBeforeVat}
+            vat={vatAmount}
+            wht={effectiveWhtAmount}
+            net={netTotal}
+            bordered={false}
+          />
         </div>
 
         {/* Payment section — usually filled in later, after the bill itself is entered */}
@@ -783,7 +884,13 @@ export function BillForm({
                   <Select value={field.value ?? NONE} onValueChange={(v) => field.onChange(v === NONE ? null : v)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="เลือกวิธีการจ่าย">
-                        {(value: string) => (value === NONE ? "ยังไม่ระบุ" : value)}
+                        {(value: string) =>
+                          value === NONE
+                            ? "ยังไม่ระบุ"
+                            : value === "บัญชีธนาคารบริษัท"
+                              ? "จ่ายผ่านบัญชีธนาคารบริษัทฯ"
+                              : value
+                        }
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -878,8 +985,6 @@ export function BillForm({
           )}
         </div>
       </div>
-
-      <SummaryBar beforeVat={totalBeforeVat} vat={vatAmount} wht={effectiveWhtAmount} net={netTotal} />
 
       <div className="flex items-center justify-between">
         {mode === "edit" && !isCancelled ? (

@@ -1,18 +1,28 @@
 import { formatCurrency } from "@/lib/utils/format";
+import { cn } from "@/lib/utils";
 
 export function SummaryBar({
   beforeVat,
   vat,
   wht,
   net,
+  bordered = true,
 }: {
   beforeVat: number;
   vat: number;
   wht: number;
   net: number;
+  // false when nested inside a card that already has its own border/shadow (e.g. the รายการย่อย
+  // card) — avoids a redundant card-within-a-card look.
+  bordered?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-x-8 gap-y-2 rounded-xl border border-border bg-card px-5 py-3 shadow-sm">
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-end gap-x-8 gap-y-2 rounded-xl px-5 py-3",
+        bordered && "border border-border bg-card shadow-sm",
+      )}
+    >
       <div className="text-sm text-muted-foreground">
         รวมก่อน VAT <span className="ml-1.5 font-mono font-medium text-ink">{formatCurrency(beforeVat)}</span>
       </div>
