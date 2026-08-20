@@ -383,28 +383,37 @@ export function BillForm({
   }
 
   function onSave(saveMode: "draft" | "final") {
-    const rawValues = getValues();
-    const values = { ...rawValues, lines: buildLinesForSubmit() };
-    const schema = saveMode === "final" ? hpBillFinalSchema : hpBillDraftSchema;
-    const parsed = schema.safeParse(values);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "กรุณาตรวจสอบข้อมูลให้ครบถ้วน");
-      return;
-    }
-    startTransition(async () => {
-      try {
-        const result = await saveHpBill(values, saveMode, mode === "create");
-        setCurrentHpNumber(result.hp_number);
-        toast.success(saveMode === "final" ? "บันทึกและปิดงานแล้ว" : "บันทึกร่างแล้ว");
-        if (saveMode === "final") {
-          router.push("/bills");
-        } else if (mode === "create") {
-          router.replace(`/bills/${result.hp_number}/edit`);
-        }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ");
+    // ครอบทั้งฟังก์ชันด้วย try/catch — ก่อนหน้านี้ถ้า buildLinesForSubmit() หรือ safeParse ตัวมันเอง
+    // throw อะไรที่ไม่คาดคิดขึ้นมา (bug ที่ยังไม่รู้จัก) จะไม่มี toast ขึ้นเลย ดูเหมือนกดปุ่มแล้ว
+    // "ไม่มีอะไรเกิดขึ้น" ทั้งที่จริง ๆ มี error เกิดขึ้นแล้วแค่ไม่มีใครจับไว้โชว์ให้เห็น
+    try {
+      const rawValues = getValues();
+      const values = { ...rawValues, lines: buildLinesForSubmit() };
+      const schema = saveMode === "final" ? hpBillFinalSchema : hpBillDraftSchema;
+      const parsed = schema.safeParse(values);
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message ?? "กรุณาตรวจสอบข้อมูลให้ครบถ้วน");
+        return;
       }
-    });
+      startTransition(async () => {
+        try {
+          const result = await saveHpBill(values, saveMode, mode === "create");
+          setCurrentHpNumber(result.hp_number);
+          toast.success(saveMode === "final" ? "บันทึกและปิดงานแล้ว" : "บันทึกร่างแล้ว");
+          if (saveMode === "final") {
+            router.push("/bills");
+          } else if (mode === "create") {
+            router.replace(`/bills/${result.hp_number}/edit`);
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ");
+        }
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? `เกิดข้อผิดพลาดที่ไม่คาดคิด: ${err.message}` : "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+      );
+    }
   }
 
   async function handleIssueWhtCertificate() {
