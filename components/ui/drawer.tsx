@@ -45,7 +45,7 @@ function DrawerContent({
         data-slot="drawer-content"
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex h-full flex-col bg-card shadow-[-6px_0_28px_rgba(35,24,12,.18)] outline-none [animation-duration:280ms] [animation-timing-function:cubic-bezier(.2,.8,.2,1)] data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right",
-          size === "wide" ? "w-[820px] max-w-[94vw]" : "w-[460px] max-w-[92vw]",
+          size === "wide" ? "w-[900px] max-w-[96vw]" : "w-[460px] max-w-[92vw]",
           className
         )}
         {...props}

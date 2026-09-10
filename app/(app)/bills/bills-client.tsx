@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/table";
 import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { FilterField, filterTriggerClassName } from "@/components/shared/filter-field";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { CategoryTag } from "@/components/shared/category-tag";
 import { SortableTableHead, type SortDirection } from "@/components/shared/sortable-table-head";
 import { BillDetailDrawer } from "@/components/bills/bill-detail-drawer";
@@ -195,7 +194,7 @@ export function BillsClient({
             type="button"
             onClick={() => setCategory(c.key)}
             className={cn(
-              "flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
               category === c.key
                 ? "border-navy text-navy"
                 : "border-transparent text-muted-foreground hover:text-ink",
@@ -308,11 +307,31 @@ export function BillsClient({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-[3px] rounded-full bg-success" />
+          ชำระแล้ว/เอกสารครบ
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-[3px] rounded-full bg-warn" />
+          รอชำระ / เอกสารยังไม่ครบ
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-[3px] rounded-full bg-info" />
+          ร่างเอกสาร
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-[3px] rounded-full bg-danger" />
+          ยกเลิก
+        </span>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(35,24,12,.05)]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-surface-tint hover:bg-surface-tint">
+                <TableHead className="w-2 p-0" />
                 <SortableTableHead label="เลข HP" sortKey="hpNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <SortableTableHead label="วันที่" sortKey="date" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <SortableTableHead label="ผู้จำหน่าย" sortKey="vendor" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
@@ -322,7 +341,6 @@ export function BillsClient({
                 <TableHead className="text-right">VAT</TableHead>
                 <TableHead className="text-right">หัก ณ ที่จ่าย</TableHead>
                 <TableHead className="text-right">สุทธิ</TableHead>
-                <TableHead>สถานะ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -335,6 +353,7 @@ export function BillsClient({
               )}
               {sortedRows.map((row) => {
                 const line = row.first;
+                const statusTone = documentStatusTone(statusForLine(line));
                 return (
                   <TableRow
                     key={row.hpNumber}
@@ -345,6 +364,17 @@ export function BillsClient({
                       !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                     )}
                   >
+                    <TableCell className="w-2 p-0">
+                      <span
+                        className={cn(
+                          "block h-5 w-[3px] rounded-full",
+                          statusTone === "success" && "bg-success",
+                          statusTone === "warn" && "bg-warn",
+                          statusTone === "info" && "bg-info",
+                          statusTone === "danger" && "bg-danger",
+                        )}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono">{row.hpNumber}</TableCell>
                     <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
                     <TableCell>{line.vendor_name_snapshot}</TableCell>
@@ -369,12 +399,6 @@ export function BillsClient({
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold tabular-nums">
                       {formatCurrency(row.netPaidAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const status = statusForLine(line);
-                        return <StatusBadge label={status} tone={documentStatusTone(status)} />;
-                      })()}
                     </TableCell>
                   </TableRow>
                 );
