@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { FileCheck2, FileWarning, Wallet, AlertTriangle } from "lucide-react";
 import {
   Table,
@@ -13,6 +12,8 @@ import {
 } from "@/components/ui/table";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { SortableTableHead, type SortDirection } from "@/components/shared/sortable-table-head";
+import { BillDetailDrawer } from "@/components/bills/bill-detail-drawer";
 import { derivePurchaseDocLabel, purchaseDocLabelTone } from "@/lib/utils/document-status";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate } from "@/lib/utils/thai-date";
@@ -22,7 +23,29 @@ import type { Database } from "@/lib/types/database";
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 
 export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
-  const router = useRouter();
+  const [selectedHp, setSelectedHp] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<"hpNumber" | "date" | "vendor" | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>("asc");
+
+  function toggleSort(key: "hpNumber" | "date" | "vendor") {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedLines = useMemo(() => {
+    if (!sortKey) return lines;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...lines].sort((a, b) => {
+      if (sortKey === "hpNumber") return a.hp_number.localeCompare(b.hp_number) * dir;
+      if (sortKey === "date")
+        return (a.transaction_date < b.transaction_date ? -1 : a.transaction_date > b.transaction_date ? 1 : 0) * dir;
+      return a.vendor_name_snapshot.localeCompare(b.vendor_name_snapshot) * dir;
+    });
+  }, [lines, sortKey, sortDir]);
 
   const pending = useMemo(() => lines.filter((l) => l.document_type === "ยังไม่มีเอกสาร"), [lines]);
   const received = lines.filter((l) => l.document_type !== "ยังไม่มีเอกสาร");
@@ -66,10 +89,10 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
-                <TableHead>เลข HP</TableHead>
-                <TableHead>วันที่</TableHead>
-                <TableHead>ผู้จำหน่าย</TableHead>
+              <TableRow className="bg-surface-tint hover:bg-surface-tint">
+                <SortableTableHead label="เลข HP" sortKey="hpNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                <SortableTableHead label="วันที่" sortKey="date" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                <SortableTableHead label="ผู้จำหน่าย" sortKey="vendor" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <TableHead>รายละเอียด</TableHead>
                 <TableHead className="text-right">สุทธิ</TableHead>
                 <TableHead>เอกสารซื้อ</TableHead>
@@ -84,7 +107,7 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
                   </TableCell>
                 </TableRow>
               )}
-              {lines.map((line) => {
+              {sortedLines.map((line) => {
                 const docLabel = derivePurchaseDocLabel({
                   documentType: line.document_type,
                   expectedDocumentType: line.expected_document_type,
@@ -92,9 +115,9 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
                 return (
                   <TableRow
                     key={line.id}
-                    onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
+                    onClick={() => setSelectedHp(line.hp_number)}
                     className={cn(
-                      "cursor-pointer hover:bg-[#F5F7FB]",
+                      "cursor-pointer hover:bg-surface-tint",
                       line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                     )}
                   >
@@ -102,7 +125,7 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
                     <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
                     <TableCell>{line.vendor_name_snapshot}</TableCell>
                     <TableCell className="max-w-56 truncate">{line.description}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(line.net_paid_amount)}</TableCell>
+                    <TableCell className="text-right font-mono font-semibold tabular-nums">{formatCurrency(line.net_paid_amount)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <StatusBadge label={docLabel} tone={purchaseDocLabelTone(docLabel)} />
@@ -121,6 +144,8 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
           </Table>
         </div>
       </div>
+
+      <BillDetailDrawer hpNumber={selectedHp} onClose={() => setSelectedHp(null)} />
     </div>
   );
 }

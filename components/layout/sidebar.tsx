@@ -23,10 +23,10 @@ import { signOut } from "@/lib/actions/auth";
 // tabs + a create-by-category menu live on that page itself (bills-client.tsx),
 // so the sidebar doesn't need separate "list" vs "record new" entries per category.
 const mainMenu = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/bills", label: "รายจ่าย", icon: ReceiptText },
   { href: "/document-tracking", label: "สถานะเอกสารซื้อ", icon: FileCheck2 },
   { href: "/tax-report", label: "รายงานภาษีซื้อ", icon: FileSpreadsheet },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 
 const masterMenu = [

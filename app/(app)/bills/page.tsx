@@ -13,7 +13,6 @@ export default async function BillsPage() {
   return (
     <>
       <Header
-        eyebrow="รายจ่าย"
         title="รายจ่าย"
         subtitle="รายการย่อยทั้งหมดของรายจ่าย"
         metaChip={`ทั้งหมด ${lines?.length ?? 0} รายการ`}

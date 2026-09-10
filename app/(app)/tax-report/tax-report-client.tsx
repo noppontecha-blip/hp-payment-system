@@ -141,11 +141,11 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(35,24,12,.05)]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+              <TableRow className="bg-surface-tint hover:bg-surface-tint">
                 <TableHead>เลข HP</TableHead>
                 <TableHead>วันที่ใบกำกับภาษี</TableHead>
                 <TableHead>วันที่ได้รับ</TableHead>
@@ -180,11 +180,11 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
                     {line.document_number || "-"}
                   </TableCell>
                   <TableCell>{line.vendor_name_snapshot}</TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums">
                     {formatCurrency(line.amount_before_vat)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(line.vat_amount)}</TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(line.vat_amount)}</TableCell>
+                  <TableCell className="text-right font-mono font-semibold tabular-nums">
                     {formatCurrency(line.amount_before_vat + line.vat_amount)}
                   </TableCell>
                 </TableRow>
@@ -194,9 +194,9 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
               <TableFooter>
                 <TableRow className="font-semibold text-ink">
                   <TableCell colSpan={5}>ยอดรวม</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(totals.beforeVat)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(totals.vat)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(totals.total)}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.beforeVat)}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.vat)}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.total)}</TableCell>
                 </TableRow>
               </TableFooter>
             )}

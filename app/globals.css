@@ -15,10 +15,15 @@
   --color-navy: var(--navy);
   --color-navy-700: var(--navy-700);
   --color-navy-600: var(--navy-600);
-  --color-accent: var(--accent-brand);
+  /* generic `accent` stays a neutral hover-highlight (shadcn menus/selects use it constantly) —
+     the rust brand color is exposed separately as `brand` so it stays reserved for deliberate emphasis */
+  --color-accent: var(--secondary);
+  --color-brand: var(--accent-brand);
   --color-accent-deep: var(--accent-deep);
+  --color-accent-tint: var(--accent-tint);
   --color-ink: var(--ink);
   --color-muted-2: var(--muted-2);
+  --color-surface-tint: var(--surface-tint);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
   --color-success: var(--success);
@@ -56,13 +61,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* design brief caps every corner at 12px — xl+ no longer scale past --radius */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
 }
 
 :root {
@@ -70,22 +76,24 @@
   --navy: #1e2a4a;
   --navy-700: #28395e;
   --navy-600: #32456e;
-  --accent-brand: #f0a431;
-  --accent-deep: #d6871a;
-  --bg: #eef1f6;
+  --accent-brand: #b8451f;
+  --accent-deep: #8f3617;
+  --accent-tint: #f2ded1;
+  --bg: #f6f3ec;
   --card-color: #ffffff;
   --ink: #1b2333;
-  --muted-color: #6b7280;
-  --muted-2: #9aa2af;
+  --muted-color: #6b6f7a;
+  --muted-2: #9aa0aa;
   --danger: #d64545;
   --danger-bg: #fcebea;
   --success: #2e9b5c;
   --success-bg: #e8f6ec;
   --info: #3068c8;
   --info-bg: #eaf1fc;
-  --warn: #d6871a;
-  --warn-bg: #fdf1e0;
-  --border-color: #e5e8ef;
+  --warn: #c98a1f;
+  --warn-bg: #fbf1de;
+  --border-color: #e9e2d3;
+  --surface-tint: #fbfaf7;
 
   --background: var(--bg);
   --foreground: var(--ink);
@@ -95,9 +103,9 @@
   --popover-foreground: var(--ink);
   --primary: var(--navy);
   --primary-foreground: #ffffff;
-  --secondary: #f2f4f8;
+  --secondary: #f1ece0;
   --secondary-foreground: var(--ink);
-  --muted: #f2f4f8;
+  --muted: #f1ece0;
   --muted-foreground: var(--muted-color);
   --accent-foreground: var(--ink);
   --destructive: var(--danger);
@@ -114,7 +122,7 @@
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--navy);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f2f4f8;
+  --sidebar-accent: #f1ece0;
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--border-color);
   --sidebar-ring: var(--navy);

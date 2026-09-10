@@ -32,7 +32,7 @@ import type { Database } from "@/lib/types/database";
 
 type Line = Database["public"]["Tables"]["hp_payment_lines"]["Row"];
 
-const CHART_COLORS = ["#1E2A4A", "#F0A431", "#3068C8", "#2E9B5C", "#D6871A", "#94A3B8", "#C4CAD4"];
+const CHART_COLORS = ["#1E2A4A", "#B8451F", "#3068C8", "#2E9B5C", "#9AA0AA", "#C98A1F", "#C4B8A5"];
 
 export function DashboardClient({
   billsThisMonth,
@@ -62,13 +62,11 @@ export function DashboardClient({
           value={`${billsThisMonth} บิล`}
           trend={`ปีนี้: ${billsThisYear} บิล`}
           icon={<ReceiptText className="size-4" />}
-          accent="info"
         />
         <KpiCard
           label="ยอดจ่ายสุทธิรวม (ปีนี้)"
           value={formatCurrency(netPaidThisYear)}
           icon={<Wallet className="size-4" />}
-          accent="info"
         />
         <KpiCard
           label="บิลที่ยังไม่มีเอกสารซื้อ"
@@ -80,16 +78,15 @@ export function DashboardClient({
           label="รวมยอดหัก ณ ที่จ่าย (ปีนี้)"
           value={formatCurrency(whtTotalThisYear)}
           icon={<Percent className="size-4" />}
-          accent="warn"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-ink">ยอดจ่ายรายเดือน</p>
+          <h3 className="mb-4 text-sm font-bold text-ink">ยอดจ่ายรายเดือน</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthlySeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E8EF" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E9E2D3" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} width={70} tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip formatter={(value) => formatCurrency(Number(value))} />
@@ -99,7 +96,7 @@ export function DashboardClient({
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="mb-4 text-sm font-medium text-ink">สัดส่วนตามหมวดบัญชี</p>
+          <h3 className="mb-4 text-sm font-bold text-ink">สัดส่วนตามหมวดบัญชี</h3>
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
@@ -121,14 +118,14 @@ export function DashboardClient({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">
+      <div className="rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(35,24,12,.05)]">
         <div className="border-b border-border p-4">
-          <p className="text-sm font-medium text-ink">รายการล่าสุด</p>
+          <h3 className="text-sm font-bold text-ink">รายการล่าสุด</h3>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+              <TableRow className="bg-surface-tint hover:bg-surface-tint">
                 <TableHead>เลข HP</TableHead>
                 <TableHead>วันที่</TableHead>
                 <TableHead>ผู้จำหน่าย</TableHead>
@@ -142,7 +139,7 @@ export function DashboardClient({
                 <TableRow
                   key={line.id}
                   onClick={() => router.push(`/bills/${line.hp_number}/edit`)}
-                  className="cursor-pointer hover:bg-[#F5F7FB]"
+                  className="cursor-pointer hover:bg-surface-tint"
                 >
                   <TableCell className="font-mono">{line.hp_number}</TableCell>
                   <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
@@ -156,7 +153,7 @@ export function DashboardClient({
                     </Link>
                   </TableCell>
                   <TableCell className="max-w-64 truncate">{line.description}</TableCell>
-                  <TableCell className="text-right font-mono font-medium">
+                  <TableCell className="text-right font-mono font-semibold tabular-nums">
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>

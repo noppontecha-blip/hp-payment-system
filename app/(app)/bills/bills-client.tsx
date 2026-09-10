@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Download, Plus, Search } from "lucide-react";
@@ -25,6 +24,8 @@ import { ThaiDatePicker } from "@/components/shared/thai-date-picker";
 import { FilterField, filterTriggerClassName } from "@/components/shared/filter-field";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CategoryTag } from "@/components/shared/category-tag";
+import { SortableTableHead, type SortDirection } from "@/components/shared/sortable-table-head";
+import { BillDetailDrawer } from "@/components/bills/bill-detail-drawer";
 import { deriveDocumentStatus, documentStatusTone } from "@/lib/utils/document-status";
 import { formatCurrency } from "@/lib/utils/format";
 import { formatThaiDate } from "@/lib/utils/thai-date";
@@ -64,6 +65,18 @@ export function BillsClient({
   const [vendorId, setVendorId] = useState(ALL);
   const [documentType, setDocumentType] = useState(ALL);
   const [whtFilter, setWhtFilter] = useState(ALL);
+  const [selectedHp, setSelectedHp] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<"hpNumber" | "date" | "vendor" | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>("asc");
+
+  function toggleSort(key: "hpNumber" | "date" | "vendor") {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const paidByHpNumber = useMemo(() => {
     const map = new Map<string, number>();
@@ -149,6 +162,17 @@ export function BillsClient({
       requiresWht: group.some((l) => l.requires_wht),
     }));
   }, [filtered]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return groupedRows;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...groupedRows].sort((a, b) => {
+      if (sortKey === "hpNumber") return a.hpNumber.localeCompare(b.hpNumber) * dir;
+      if (sortKey === "date")
+        return (a.first.transaction_date < b.first.transaction_date ? -1 : a.first.transaction_date > b.first.transaction_date ? 1 : 0) * dir;
+      return a.first.vendor_name_snapshot.localeCompare(b.first.vendor_name_snapshot) * dir;
+    });
+  }, [groupedRows, sortKey, sortDir]);
 
   function handleExport() {
     const params = new URLSearchParams();
@@ -284,14 +308,14 @@ export function BillsClient({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(35,24,12,.05)]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
-                <TableHead>เลข HP</TableHead>
-                <TableHead>วันที่</TableHead>
-                <TableHead>ผู้จำหน่าย</TableHead>
+              <TableRow className="bg-surface-tint hover:bg-surface-tint">
+                <SortableTableHead label="เลข HP" sortKey="hpNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                <SortableTableHead label="วันที่" sortKey="date" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                <SortableTableHead label="ผู้จำหน่าย" sortKey="vendor" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <TableHead>รายละเอียด</TableHead>
                 <TableHead>หมวด</TableHead>
                 <TableHead className="text-right">ก่อน VAT</TableHead>
@@ -302,36 +326,28 @@ export function BillsClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {groupedRows.length === 0 && (
+              {sortedRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="py-8 text-center text-muted-2">
                     ไม่พบรายการที่ตรงกับเงื่อนไข
                   </TableCell>
                 </TableRow>
               )}
-              {groupedRows.map((row) => {
+              {sortedRows.map((row) => {
                 const line = row.first;
                 return (
                   <TableRow
                     key={row.hpNumber}
-                    onClick={() => router.push(`/bills/${row.hpNumber}/edit`)}
+                    onClick={() => setSelectedHp(row.hpNumber)}
                     className={cn(
-                      "cursor-pointer text-xs font-normal hover:bg-[#F5F7FB]",
+                      "cursor-pointer text-xs font-normal hover:bg-surface-tint",
                       line.is_cancelled && "opacity-50 grayscale",
                       !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                     )}
                   >
                     <TableCell className="font-mono">{row.hpNumber}</TableCell>
                     <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/bills/${row.hpNumber}/edit`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="font-normal text-navy underline decoration-navy/30 underline-offset-2"
-                      >
-                        {line.vendor_name_snapshot}
-                      </Link>
-                    </TableCell>
+                    <TableCell>{line.vendor_name_snapshot}</TableCell>
                     <TableCell className="max-w-64 truncate">
                       {line.description}
                       {row.lineCount > 1 && (
@@ -346,12 +362,12 @@ export function BillsClient({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(row.amountBeforeVat)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(row.vatAmount)}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono tabular-nums">{formatCurrency(row.amountBeforeVat)}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">{formatCurrency(row.vatAmount)}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
                       {row.requiresWht ? formatCurrency(row.whtAmount) : "-"}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono font-semibold tabular-nums">
                       {formatCurrency(row.netPaidAmount)}
                     </TableCell>
                     <TableCell>
@@ -367,6 +383,8 @@ export function BillsClient({
           </Table>
         </div>
       </div>
+
+      <BillDetailDrawer hpNumber={selectedHp} onClose={() => setSelectedHp(null)} />
     </div>
   );
 }

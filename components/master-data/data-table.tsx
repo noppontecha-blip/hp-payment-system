@@ -35,10 +35,10 @@ export function DataTable<T extends { id: string }>({
   emptyLabel?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(20,25,40,.03)]">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgba(35,24,12,.05)]">
       <Table>
         <TableHeader>
-          <TableRow className="bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+          <TableRow className="bg-surface-tint hover:bg-surface-tint">
             {columns.map((c) => (
               <TableHead key={c.key} className={c.align === "right" ? "text-right" : ""}>
                 {c.header}
@@ -56,19 +56,20 @@ export function DataTable<T extends { id: string }>({
             </TableRow>
           )}
           {rows.map((row) => (
-            <TableRow key={row.id} className="hover:bg-[#F5F7FB]">
+            <TableRow key={row.id} className="hover:bg-surface-tint">
               {columns.map((c) => (
                 <TableCell
                   key={c.key}
                   className={cn(
+                    "py-1.5",
                     c.align === "right" && "text-right",
-                    c.numeric && "font-mono",
+                    c.numeric && "font-mono tabular-nums",
                   )}
                 >
                   {c.render(row)}
                 </TableCell>
               ))}
-              <TableCell className="text-right">
+              <TableCell className="py-1.5 text-right">
                 <div className="flex justify-end gap-1">
                   <Button variant="ghost" size="icon-sm" onClick={() => onEdit(row)} aria-label="แก้ไข">
                     <Pencil className="size-3.5" />

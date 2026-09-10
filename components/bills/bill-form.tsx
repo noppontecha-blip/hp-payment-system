@@ -114,6 +114,7 @@ export function BillForm({
   payments,
   initialIsDraft = false,
   initialIsCancelled = false,
+  onSaved,
 }: {
   mode: "create" | "edit";
   hpNumber: string;
@@ -127,6 +128,10 @@ export function BillForm({
   payments?: BillPayment[];
   initialIsDraft?: boolean;
   initialIsCancelled?: boolean;
+  // Provided when the form renders inside the row-detail drawer instead of its own page —
+  // called after a final save/cancel instead of navigating away, so the drawer can close
+  // and let the list underneath refresh itself.
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -401,7 +406,8 @@ export function BillForm({
           setCurrentHpNumber(result.hp_number);
           toast.success(saveMode === "final" ? "บันทึกและปิดงานแล้ว" : "บันทึกร่างแล้ว");
           if (saveMode === "final") {
-            router.push("/bills");
+            if (onSaved) onSaved();
+            else router.push("/bills");
           } else if (mode === "create") {
             router.replace(`/bills/${result.hp_number}/edit`);
           }
@@ -467,7 +473,8 @@ export function BillForm({
       try {
         await cancelHpBill(currentHpNumber);
         toast.success("ยกเลิกเอกสารแล้ว");
-        router.push("/bills");
+        if (onSaved) onSaved();
+        else router.push("/bills");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "ยกเลิกไม่สำเร็จ");
       }

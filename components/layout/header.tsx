@@ -49,7 +49,7 @@ export function Header({
         >
           <Bell className="size-4" />
           {hasNotification && (
-            <span className="absolute top-2 right-2 size-2 rounded-full bg-accent" />
+            <span className="absolute top-2 right-2 size-2 rounded-full bg-brand" />
           )}
         </button>
         <div className="flex items-center gap-2 border-l border-border pl-4">
