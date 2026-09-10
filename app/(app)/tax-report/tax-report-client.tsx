@@ -165,7 +165,7 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
                 </TableRow>
               )}
               {filtered.map((line) => (
-                <TableRow key={line.id} className="text-xs font-normal">
+                <TableRow key={line.id}>
                   <TableCell className="font-mono">{line.hp_number}</TableCell>
                   <TableCell className="font-mono">
                     {formatThaiDate(line.document_invoice_date)}

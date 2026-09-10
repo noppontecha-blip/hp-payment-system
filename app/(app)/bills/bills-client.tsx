@@ -309,19 +309,19 @@ export function BillsClient({
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-[3px] rounded-full bg-success" />
+          <span className="h-3 w-[5px] rounded-full bg-success" />
           ชำระแล้ว/เอกสารครบ
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-[3px] rounded-full bg-warn" />
+          <span className="h-3 w-[5px] rounded-full bg-warn" />
           รอชำระ / เอกสารยังไม่ครบ
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-[3px] rounded-full bg-info" />
+          <span className="h-3 w-[5px] rounded-full bg-info" />
           ร่างเอกสาร
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-[3px] rounded-full bg-danger" />
+          <span className="h-3 w-[5px] rounded-full bg-danger" />
           ยกเลิก
         </span>
       </div>
@@ -331,7 +331,7 @@ export function BillsClient({
           <Table>
             <TableHeader>
               <TableRow className="bg-surface-tint hover:bg-surface-tint">
-                <TableHead className="w-2 p-0" />
+                <TableHead className="w-3 p-0" />
                 <SortableTableHead label="เลข HP" sortKey="hpNumber" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <SortableTableHead label="วันที่" sortKey="date" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                 <SortableTableHead label="ผู้จำหน่าย" sortKey="vendor" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
@@ -359,15 +359,15 @@ export function BillsClient({
                     key={row.hpNumber}
                     onClick={() => setSelectedHp(row.hpNumber)}
                     className={cn(
-                      "cursor-pointer text-xs font-normal hover:bg-surface-tint",
+                      "cursor-pointer hover:bg-surface-tint",
                       line.is_cancelled && "opacity-50 grayscale",
                       !line.is_cancelled && line.document_type === "ยังไม่มีเอกสาร" && "bg-warn-bg/40",
                     )}
                   >
-                    <TableCell className="w-2 p-0">
+                    <TableCell className="w-3 p-0">
                       <span
                         className={cn(
-                          "block h-5 w-[3px] rounded-full",
+                          "block h-6 w-[5px] rounded-full",
                           statusTone === "success" && "bg-success",
                           statusTone === "warn" && "bg-warn",
                           statusTone === "info" && "bg-info",
@@ -377,7 +377,7 @@ export function BillsClient({
                     </TableCell>
                     <TableCell className="font-mono">{row.hpNumber}</TableCell>
                     <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
-                    <TableCell>{line.vendor_name_snapshot}</TableCell>
+                    <TableCell className="max-w-32 truncate">{line.vendor_name_snapshot}</TableCell>
                     <TableCell className="max-w-64 truncate">
                       {line.description}
                       {row.lineCount > 1 && (
