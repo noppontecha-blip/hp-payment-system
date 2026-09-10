@@ -216,7 +216,7 @@ export function LineItemRow({
           />
         </td>
         <td className="p-2 align-top">
-          <div className="flex h-8 items-center justify-end rounded-lg bg-muted px-2.5 font-mono text-sm">
+          <div className="flex h-8 items-center justify-end rounded-lg bg-muted px-2.5 font-numeric text-sm tabular-nums">
             {formatCurrency(total || 0)}
           </div>
         </td>

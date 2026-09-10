@@ -153,7 +153,7 @@ export function DashboardClient({
                     </Link>
                   </TableCell>
                   <TableCell className="max-w-64 truncate">{line.description}</TableCell>
-                  <TableCell className="text-right font-mono font-semibold tabular-nums">
+                  <TableCell className="text-right font-numeric font-semibold tabular-nums">
                     {formatCurrency(line.net_paid_amount)}
                   </TableCell>
                   <TableCell>

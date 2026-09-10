@@ -189,7 +189,7 @@ export function PaymentHistory({
               <tr key={p.id} className="border-b border-border last:border-0">
                 <td className="p-2">{formatThaiDate(p.payment_date)}</td>
                 <td className="p-2">{p.payment_method ?? "-"}</td>
-                <td className="p-2 font-mono">{formatCurrency(p.amount)}</td>
+                <td className="p-2 font-numeric">{formatCurrency(p.amount)}</td>
                 <td className="p-2 text-muted-foreground">{p.notes ?? "-"}</td>
                 <td className="p-2">
                   {p.slip_path ? (
@@ -316,10 +316,10 @@ export function PaymentHistory({
 
       <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-1 text-sm">
         <span className="text-muted-foreground">
-          ยอดที่ต้องชำระ <span className="ml-1 font-mono text-ink">{formatCurrency(netTotal)}</span>
+          ยอดที่ต้องชำระ <span className="ml-1 font-numeric text-ink">{formatCurrency(netTotal)}</span>
         </span>
         <span className="text-muted-foreground">
-          ชำระแล้ว <span className="ml-1 font-mono text-ink">{formatCurrency(paidSoFar)}</span>
+          ชำระแล้ว <span className="ml-1 font-numeric text-ink">{formatCurrency(paidSoFar)}</span>
         </span>
         <span
           className={cn(
@@ -327,7 +327,7 @@ export function PaymentHistory({
             remaining <= 0 ? "text-success" : "text-warn",
           )}
         >
-          คงเหลือ <span className="ml-1 font-mono">{formatCurrency(remaining)}</span>
+          คงเหลือ <span className="ml-1 font-numeric">{formatCurrency(remaining)}</span>
         </span>
       </div>
     </div>

@@ -10,6 +10,8 @@
   --font-sans: var(--font-noto-sans-thai), var(--font-inter), sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: var(--font-ibm-plex-mono);
+  /* money figures — everything else numeric (HP numbers, dates, codes) stays font-mono */
+  --font-numeric: var(--font-ibm-plex-sans), var(--font-inter), sans-serif;
 
   /* SPK Crane dashboard design system */
   --color-navy: var(--navy);

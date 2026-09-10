@@ -180,11 +180,11 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
                     {line.document_number || "-"}
                   </TableCell>
                   <TableCell>{line.vendor_name_snapshot}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
+                  <TableCell className="text-right font-numeric tabular-nums">
                     {formatCurrency(line.amount_before_vat)}
                   </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(line.vat_amount)}</TableCell>
-                  <TableCell className="text-right font-mono font-semibold tabular-nums">
+                  <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(line.vat_amount)}</TableCell>
+                  <TableCell className="text-right font-numeric font-semibold tabular-nums">
                     {formatCurrency(line.amount_before_vat + line.vat_amount)}
                   </TableCell>
                 </TableRow>
@@ -194,9 +194,9 @@ export function TaxReportClient({ lines }: { lines: Line[] }) {
               <TableFooter>
                 <TableRow className="font-semibold text-ink">
                   <TableCell colSpan={5}>ยอดรวม</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.beforeVat)}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.vat)}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">{formatCurrency(totals.total)}</TableCell>
+                  <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(totals.beforeVat)}</TableCell>
+                  <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(totals.vat)}</TableCell>
+                  <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(totals.total)}</TableCell>
                 </TableRow>
               </TableFooter>
             )}

@@ -392,12 +392,12 @@ export function BillsClient({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatCurrency(row.amountBeforeVat)}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{formatCurrency(row.vatAmount)}</TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(row.amountBeforeVat)}</TableCell>
+                    <TableCell className="text-right font-numeric tabular-nums">{formatCurrency(row.vatAmount)}</TableCell>
+                    <TableCell className="text-right font-numeric tabular-nums">
                       {row.requiresWht ? formatCurrency(row.whtAmount) : "-"}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold tabular-nums">
+                    <TableCell className="text-right font-numeric font-semibold tabular-nums">
                       {formatCurrency(row.netPaidAmount)}
                     </TableCell>
                   </TableRow>

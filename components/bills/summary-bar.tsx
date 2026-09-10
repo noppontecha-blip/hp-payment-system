@@ -24,14 +24,14 @@ export function SummaryBar({
       )}
     >
       <div className="text-sm text-muted-foreground">
-        รวมก่อน VAT <span className="ml-1.5 font-mono font-medium text-ink">{formatCurrency(beforeVat)}</span>
+        รวมก่อน VAT <span className="ml-1.5 font-numeric font-medium text-ink">{formatCurrency(beforeVat)}</span>
       </div>
       <div className="text-sm text-muted-foreground">
-        รวม VAT <span className="ml-1.5 font-mono font-medium text-ink">{formatCurrency(vat)}</span>
+        รวม VAT <span className="ml-1.5 font-numeric font-medium text-ink">{formatCurrency(vat)}</span>
       </div>
       {wht > 0 && (
         <div className="text-sm text-warn">
-          หัก ณ ที่จ่าย <span className="ml-1.5 font-mono font-medium">-{formatCurrency(wht)}</span>
+          หัก ณ ที่จ่าย <span className="ml-1.5 font-numeric font-medium">-{formatCurrency(wht)}</span>
         </div>
       )}
       <div className="flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-white">

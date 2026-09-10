@@ -788,7 +788,7 @@ export function BillForm({
                   <td className="p-2" colSpan={6}>
                     รวมทั้งสิ้น
                   </td>
-                  <td className="p-2 font-mono">{formatCurrency(totalBeforeVat)}</td>
+                  <td className="p-2 font-numeric">{formatCurrency(totalBeforeVat)}</td>
                   <td className="p-2" />
                 </tr>
               </tfoot>
@@ -803,7 +803,7 @@ export function BillForm({
           {vatEnabled && (
             <div className="flex animate-in fade-in slide-in-from-top-1 items-center justify-between rounded-lg bg-info-bg px-3 py-2 text-sm">
               <span className="text-muted-foreground">ยอด VAT 7% (คำนวณอัตโนมัติ)</span>
-              <span className="font-mono font-semibold text-info">{formatCurrency(vatAmount)}</span>
+              <span className="font-numeric font-semibold text-info">{formatCurrency(vatAmount)}</span>
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Thai, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Noto_Sans_Thai, Inter, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -21,6 +21,14 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+// Money figures use this instead of the mono above — same readability goal as codes/dates
+// (tabular-nums keeps columns aligned) but a humanist face reads faster for long amounts.
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "SPK Crane — ระบบบัญชีคุมบิลจ่าย HP",
   description: "ระบบบัญชีคุมบิลจ่าย HP สำหรับ SPK Crane",
@@ -34,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="th"
-      className={`${notoSansThai.variable} ${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${notoSansThai.variable} ${inter.variable} ${ibmPlexMono.variable} ${ibmPlexSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         {children}

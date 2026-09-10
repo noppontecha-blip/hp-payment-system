@@ -125,7 +125,7 @@ export function DocumentTrackingClient({ lines }: { lines: Line[] }) {
                     <TableCell className="font-mono">{formatThaiDate(line.transaction_date)}</TableCell>
                     <TableCell>{line.vendor_name_snapshot}</TableCell>
                     <TableCell className="max-w-56 truncate">{line.description}</TableCell>
-                    <TableCell className="text-right font-mono font-semibold tabular-nums">{formatCurrency(line.net_paid_amount)}</TableCell>
+                    <TableCell className="text-right font-numeric font-semibold tabular-nums">{formatCurrency(line.net_paid_amount)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <StatusBadge label={docLabel} tone={purchaseDocLabelTone(docLabel)} />
